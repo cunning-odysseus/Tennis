@@ -9,22 +9,28 @@
 <body>
     <h1>Table Tennis Leaderboard</h1>
     <form action="{{ url_for('add_match') }}" method="POST">
-        <input type="text" name="player" placeholder="Player Name" required>
-        <input type="number" name="score" placeholder="Score" required>
+        <input type="text" name="player_1" placeholder="Player Name 1" required>
+        <input type="text" name="player_2" placeholder="Player Name 2" required>
+        <input type="number" name="score_1" placeholder="Score 1" required>
+        <input type="number" name="score_2" placeholder="Score 2" required>
         <button type="submit">Add Match</button>
     </form>
     <table>
         <thead>
             <tr>
-                <th>Player</th>
-                <th>Score</th>
+                <th>Player_1</th>
+                <th>Player_2</th>
+                <th>Score_1</th>
+                <th>Score_2</th>
             </tr>
         </thead>
         <tbody>
             {% for entry in leaderboard %}
             <tr>
-                <td>{{ entry.player }}</td>
-                <td>{{ entry.score }}</td>
+                <td>{{ entry.player_1 }}</td>
+                <td>{{ entry.player_2 }}</td>
+                <td>{{ entry.score_1 }}</td>
+                <td>{{ entry.score_2 }}</td>
             </tr>
             {% endfor %}
         </tbody>

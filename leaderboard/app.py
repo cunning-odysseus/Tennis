@@ -30,11 +30,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Maakt integratie tussen SQLAlchemy en de app
 db = SQLAlchemy(app)
 
+# Dit is een tabel 
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    player = db.Column(db.String(80), nullable=False)
-    score = db.Column(db.Integer, nullable=False)
-
+    player_1 = db.Column(db.String(80), nullable=False)
+    player_2 = db.Column(db.String(80), nullable=False)
+    score_1 = db.Column(db.Integer, nullable=False)
+    score_2 = db.Column(db.Integer, nullable=False)
 # Create the database and tables within the application context
 with app.app_context():
     db.create_all()
@@ -43,19 +45,26 @@ with app.app_context():
 # HTML content in de string wordt gerenderd
 @app.route('/')
 def index():
-    leaderboard = Match.query.order_by(Match.score.desc()).all()
+    # lijst met matches
+    leaderboard = Match.query.order_by(Match.score_1.desc()).all()
+    # geeft een string terug van html waarin leaderbord is geinjecteerd waarvan de browser iets moois maakt
+    # checken hoe render template werkt
+    # roundtrip maken
     return render_template('leaderboard.html', leaderboard=leaderboard)
 
 @app.route('/add', methods=['POST'])
 def add_match():
-    player = request.form.get('player')
-    score = request.form.get('score')
-    new_match = Match(player=player, score=int(score))
+    # spelers toevoegen, scores toevoegen -> ook in html ->table tennis  en in entry for leaderbord
+    player_1 = request.form.get('player_1')
+    player_2 = request.form.get('player_2')
+    score_1 = request.form.get('score_1')
+    score_2 = request.form.get('score_2')
+    new_match = Match(player_1=player_1, player_2=player_2, score_1=score_1, score_2=score_2)
     db.session.add(new_match)
     db.session.commit()
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
 
 # test
