@@ -22,18 +22,29 @@
                 <th>Player_2</th>
                 <th>Score_1</th>
                 <th>Score_2</th>
+                <th>date</th>
             </tr>
         </thead>
         <tbody>
+            <!-- Hier wordt de tabel opeghaald die in de return statement 
+            van def index staat dit heet ook wel een liquid tag
+            -->
             {% for entry in leaderboard %}
-            <tr>
-                <td>{{ entry.player_1 }}</td>
-                <td>{{ entry.player_2 }}</td>
-                <td>{{ entry.score_1 }}</td>
-                <td>{{ entry.score_2 }}</td>
-            </tr>
+                <tr>
+                    <td>{{ entry.player_1 }}</td>
+                    <td>{{ entry.player_2 }}</td>
+                    <td>{{ entry.score_1 }}</td>
+                    <td>{{ entry.score_2 }}</td>
+                    <td> {{ entry.date }} </td>
+                    <td>
+                        <a href="/update/{{ entry.match_id }}">
+                        <button type="button">Edit</button>
+                        </a>
+                    </td>
+   
+                </tr>
             {% endfor %}
-        </tbody>
-    </table>
+        </tbody> 
+     </table>
 </body>
 </html>
