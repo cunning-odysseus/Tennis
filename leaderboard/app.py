@@ -36,7 +36,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # Dit is een tabel in SQLite 
-class match_history(db.Model):
+class MatchHistory(db.Model):
     match_id = db.Column(db.Integer, primary_key=True)
     player_1 = db.Column(db.String(80), nullable=False)
     player_2 = db.Column(db.String(80), nullable=False)
@@ -53,14 +53,18 @@ with app.app_context():
 # @route verteld wat er moet worden laten zien wanneer je een bepaalde URL gebruikt in je browser
 # Hier staat / -> dus wanneer de hoofdpagina (index page) geladen wordt, dan wordt dit laten zien
 # TODO uitzoeken wat escape doet 
-@app.route('/')
-def index():
+@app.route('/<int:match_id>')
+def index(match_id):
     # lijst met matches
-    table = match_history.query.order_by(match_history.date.desc()).all()
+    leaderboard = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
     # geeft een string terug van html waarin leaderbord is geinjecteerd waarvan de browser iets moois maakt
     # checken hoe render template werkt
     # roundtrip maken
-    return render_template('match_history.html', leaderboard=table)
+    # TODO varname veranderen
+    
+    if match_id:
+        match_to_update = MatchHistory.query.get_or_404(match_id)
+    return render_template('match_history.html', leaderboard=leaderboard, match_id=match_id)
 
 # Deze URL kan je niet bezoeken, maar dient alleen om iets in te voeren vandaar de methode POST
 @app.route('/add', methods=['POST'])
@@ -70,14 +74,15 @@ def add_match():
     player_2 = request.form.get('player_2')
     score_1 = request.form.get('score_1')
     score_2 = request.form.get('score_2')
-    new_match = match_history(player_1=player_1, player_2=player_2, score_1=score_1, score_2=score_2)
+    new_match = MatchHistory(player_1=player_1, player_2=player_2, score_1=score_1, score_2=score_2)
     db.session.add(new_match)
     db.session.commit()
     return redirect(url_for('index'))
 
+# TODO kijken of get en post nodig zijn
 @app.route('/update/<int:match_id>', methods=['GET', 'POST'])
 def update_item(match_id):
-    match_to_update = match_history.query.get_or_404(match_id)
+    match_to_update = MatchHistory.query.get_or_404(match_id)
     if request.method == 'POST':
         match_to_update.player_1 = request.form['player_1']
         match_to_update.player_2 = request.form['player_2']

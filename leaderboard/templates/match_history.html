@@ -30,19 +30,34 @@
             van def index staat dit heet ook wel een liquid tag
             -->
             {% for entry in leaderboard %}
+                {% if match_id == entry.match_id %}
                 <tr>
-                    <td>{{ entry.player_1 }}</td>
+                    <td> <input type="text" value="{{ entry.player_1 }}"></td>
+                    <td><input type="text" value="{{ entry.player_2 }}"></td>
+                    <td><input type="text" value="{{ entry.score_1 }}"></td>
+                    <td><input type="text" value="{{ entry.score_2 }}"></td>
+                    <td></td>
+                    <td>
+                        <!-- # TODO save knop verder maken -->
+                        <a href="/{{ entry.match_id }}">
+                            <button type="button">Save</button>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td> {{ entry.player_1 }}></td>
                     <td>{{ entry.player_2 }}</td>
                     <td>{{ entry.score_1 }}</td>
                     <td>{{ entry.score_2 }}</td>
                     <td> {{ entry.date }} </td>
                     <td>
-                        <a href="/update/{{ entry.match_id }}">
-                        <button type="button">Edit</button>
+                        <a href="/{{ entry.match_id }}">
+                            <button type="button">Edit</button>
                         </a>
                     </td>
-   
                 </tr>
+                {% endif %}
             {% endfor %}
         </tbody> 
      </table>
