@@ -52,19 +52,17 @@ with app.app_context():
 # HTML content in de string wordt gerenderd
 # @route verteld wat er moet worden laten zien wanneer je een bepaalde URL gebruikt in je browser
 # Hier staat / -> dus wanneer de hoofdpagina (index page) geladen wordt, dan wordt dit laten zien
-# TODO uitzoeken wat escape doet 
+# TODO uitzoeken wat escape doet     
+@app.route('/')
+def index():
+    match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
+    return render_template('match_history.html', match_history_table=match_history_table)
+
 @app.route('/<int:match_id>')
-def index(match_id):
+def index_id(match_id):
     # lijst met matches
-    leaderboard = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
-    # geeft een string terug van html waarin leaderbord is geinjecteerd waarvan de browser iets moois maakt
-    # checken hoe render template werkt
-    # roundtrip maken
-    # TODO varname veranderen
-    
-    if match_id:
-        match_to_update = MatchHistory.query.get_or_404(match_id)
-    return render_template('match_history.html', leaderboard=leaderboard, match_id=match_id)
+    match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
+    return render_template('match_history.html', match_history_table=match_history_table, match_id=match_id)
 
 # Deze URL kan je niet bezoeken, maar dient alleen om iets in te voeren vandaar de methode POST
 @app.route('/add', methods=['POST'])
@@ -79,25 +77,25 @@ def add_match():
     db.session.commit()
     return redirect(url_for('index'))
 
-# TODO kijken of get en post nodig zijn
+
 @app.route('/update/<int:match_id>', methods=['GET', 'POST'])
 def update_item(match_id):
     match_to_update = MatchHistory.query.get_or_404(match_id)
-    if request.method == 'POST':
-        match_to_update.player_1 = request.form['player_1']
-        match_to_update.player_2 = request.form['player_2']
-        match_to_update.score_1 = request.form['score_1']
-        match_to_update.score_2 = request.form['score_2']
-        db.session.commit()
-        return redirect(url_for('index'))
-    return render_template('edit.html', match_to_update=match_to_update)
 
-# Voorbeeld van een dynamische route
-@app.route('/user/<string:username>') 
-def show_user(username): 
-    # Greet the user 
-    return f'Hello {username} !'
+    if request.form.get('player_1'):
+        match_to_update.player_1 = request.form.get('player_1')
+    elif request.form.get('player_2'):
+        match_to_update.player_2 = request.form.get('player_2')
+    elif request.form.get('score_1'):
+        match_to_update.score_1 = request.form.get('score_1')
+    elif request.form.get('score_2'):
+        match_to_update.score_2 = request.form.get('score_2')
+    
+    db.session.add(match_to_update)    
+    db.session.commit()
+
+    return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
-

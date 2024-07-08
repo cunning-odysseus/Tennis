@@ -29,31 +29,34 @@
             <!-- Hier wordt de tabel opeghaald die in de return statement 
             van def index staat dit heet ook wel een liquid tag
             -->
-            {% for entry in leaderboard %}
+            {% for entry in match_history_table %}
                 {% if match_id == entry.match_id %}
                 <tr>
-                    <td> <input type="text" value="{{ entry.player_1 }}"></td>
-                    <td><input type="text" value="{{ entry.player_2 }}"></td>
-                    <td><input type="text" value="{{ entry.score_1 }}"></td>
-                    <td><input type="text" value="{{ entry.score_2 }}"></td>
+                    <form action="{{ url_for('update_item', match_id = entry.match_id) }}" method="POST">
+                    <td><input type="text" name="player_1" placeholder="{{ entry.player_1 }}"></td> 
+                    <td><input type="text" name="player_2" placeholder="{{ entry.player_2 }}"></td> 
+                    <td><input type="number" name="score_1" placeholder="{{ entry.score_1 }}"></td> 
+                    <td><input type="number" name="score_2" placeholder="{{ entry.score_2 }}"></td> 
                     <td></td>
                     <td>
                         <!-- # TODO save knop verder maken -->
-                        <a href="/{{ entry.match_id }}">
-                            <button type="button">Save</button>
+                        <a href="/update/{{ entry.match_id }}">
+                            <button type="submit">Save</button>
                         </a>
                     </td>
+                    </form>
+
                 </tr>
                 {% else %}
                 <tr>
-                    <td> {{ entry.player_1 }}></td>
+                    <td>{{ entry.player_1 }}></td>
                     <td>{{ entry.player_2 }}</td>
                     <td>{{ entry.score_1 }}</td>
                     <td>{{ entry.score_2 }}</td>
                     <td> {{ entry.date }} </td>
                     <td>
                         <a href="/{{ entry.match_id }}">
-                            <button type="button">Edit</button>
+                            <button type="submit">Edit</button>
                         </a>
                     </td>
                 </tr>
