@@ -2,6 +2,7 @@ import os
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import module
 
 # Hier wordt een flask object gemaakt met de naam 'app'
 app = Flask(__name__)
@@ -44,6 +45,10 @@ class MatchHistory(db.Model):
     score_2 = db.Column(db.Integer, nullable=False)
     date = db.Column(db.DateTime, default=datetime.now)
     
+class Players(db.Model):
+    user_id = db.Column(db.String(80), primary_key=True)
+    rating = db.Column(db.Integer, nullable=False)
+
 # Create the database and tables within the application context
 with app.app_context():
     db.create_all()
@@ -56,13 +61,18 @@ with app.app_context():
 @app.route('/')
 def index():
     match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
-    return render_template('match_history.html', match_history_table=match_history_table)
+    player_rating = Players.query.order_by(Players.rating.desc()).all()
+    return render_template('match_history.html', match_history_table=match_history_table, Player_rating=player_rating)
 
 @app.route('/<int:match_id>')
 def index_id(match_id):
     # lijst met matches
     match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
     return render_template('match_history.html', match_history_table=match_history_table, match_id=match_id)
+
+
+def user_id_exists(user_id):
+    return db.session.query(Players.query.filter_by(user_id=user_id).exists()).scalar()
 
 # Deze URL kan je niet bezoeken, maar dient alleen om iets in te voeren vandaar de methode POST
 @app.route('/add', methods=['POST'])
@@ -72,6 +82,45 @@ def add_match():
     player_2 = request.form.get('player_2')
     score_1 = request.form.get('score_1')
     score_2 = request.form.get('score_2')
+
+    if user_id_exists(player_1):
+        rating_player_1 = Players.query.get(player_1).rating
+
+    else:
+        rating_player_1 = Players(user_id=player_1, rating=400)
+        db.session.add(rating_player_1)
+        db.session.commit()
+        
+    if user_id_exists(player_2):
+        rating_player_2 = Players.query.get(player_2).rating
+
+    else:
+        rating_player_2 = Players(user_id=player_2, rating=400)
+        db.session.add(rating_player_2)
+        db.session.commit()
+        
+    
+    p1 = module.prob_win(rating_player_1, rating_player_2)
+    p2 = 1 - p1
+    
+    if score_1 > score_2:
+        new_rating_p1 = module.update_rating(rating_player_1, 1, p1)
+        new_rating_p2 = module.update_rating(rating_player_2, 0, p2)
+        
+        Players.query.get(player_1).rating = new_rating_p1
+        Players.query.get(player_2).rating = new_rating_p2
+    
+    if score_1 < score_2:
+        new_rating_p1 = module.update_rating(rating_player_1, 0, p1)
+        new_rating_p2 = module.update_rating(rating_player_2, 1, p2)
+        
+        Players.query.get(player_1).rating = new_rating_p1
+        Players.query.get(player_2).rating = new_rating_p2
+        
+    elif score_1 == score_2:
+        return 'Score mag niet gelijk zijn'
+
+
     new_match = MatchHistory(player_1=player_1, player_2=player_2, score_1=score_1, score_2=score_2)
     db.session.add(new_match)
     db.session.commit()

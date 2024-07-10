@@ -10,9 +10,9 @@ def update_rating(current_rating, score, prob_win):
     new_rating = current_rating + 32*(score - prob_win)
     return new_rating
 
+
 p1 = prob_win(1656, 1763)
 p2 = 1 - p1
-print(p1)
 
 update_p1 = update_rating(1656, 1, p1)
 print(update_p1)
