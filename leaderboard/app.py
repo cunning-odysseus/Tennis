@@ -52,53 +52,153 @@ class Players(db.Model):
 # Create the database and tables within the application context
 with app.app_context():
     db.create_all()
+    
+def user_id_exists(user_id):
+    return bool(db.session.query(Players.query.filter_by(user_id=user_id).exists()).scalar())
 
 # De route decorator wordt gebruikt om Flask te vertellen welke URL de functie zou moeten triggeren
 # HTML content in de string wordt gerenderd
 # @route verteld wat er moet worden laten zien wanneer je een bepaalde URL gebruikt in je browser
-# Hier staat / -> dus wanneer de hoofdpagina (index page) geladen wordt, dan wordt dit laten zien
-# TODO uitzoeken wat escape doet     
+# Hier staat / -> dus wanneer de hoofdpagina (index page) geladen wordt, dan wordt dit laten zien   
 @app.route('/')
 def index():
+    """ 
+    Dit is de hoofdpagina van de website.
+    Hier worden de tabellen met de uitslagen en ratings geladen, maar ook een form waarin wedstrijden
+    toegevoegd kunnen worden.
+    """
     match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
     player_rating = Players.query.order_by(Players.rating.desc()).all()
     return render_template('match_history.html', match_history_table=match_history_table, Player_rating=player_rating)
 
 @app.route('/<int:match_id>')
 def index_id(match_id):
-    # lijst met matches
+    """ 
+    Dit is ook de hoofdpagina, maar dan nadat je op edit hebt geklikt
+    """
     match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
-    return render_template('match_history.html', match_history_table=match_history_table, match_id=match_id)
-
-
-def user_id_exists(user_id):
-    return db.session.query(Players.query.filter_by(user_id=user_id).exists()).scalar()
+    player_rating = Players.query.order_by(Players.rating.desc()).all()
+    return render_template('match_history.html', match_history_table=match_history_table, match_id=match_id, Player_rating=player_rating)
 
 # Deze URL kan je niet bezoeken, maar dient alleen om iets in te voeren vandaar de methode POST
 @app.route('/add', methods=['POST'])
 def add_match():
-    # spelers toevoegen, scores toevoegen -> ook in html ->table tennis  en in entry for leaderbord
+    """ 
+    Dit is de pagina waarin een post verstuurd wordt naar de server met de wedstrijd input.
+    """
+    # Hier wordt de informatie opgehaald uit de velden
     player_1 = request.form.get('player_1')
     player_2 = request.form.get('player_2')
     score_1 = request.form.get('score_1')
     score_2 = request.form.get('score_2')
+    
+    # Controle op gelijkspel
+    if score_1 == score_2:
+        return 'Score mag niet gelijk zijn'
+    else:
+        pass
 
+    # Controle op naam
+    if player_1 or player_2 == None:
+        print('Spelersnaam mag niet leeg zijn')
+    else:
+        pass
+    
+    # Controle of de persoon al bestaat, zo ja dan bestaat er ook al een rating voor die persoon
+    # en kan daarmee gerekend worden. Zo nee, dan krijgt de speler een default rating van 400.
     if user_id_exists(player_1):
         rating_player_1 = Players.query.get(player_1).rating
 
-    else:
+    elif user_id_exists(player_1) == False:
         rating_player_1 = Players(user_id=player_1, rating=400)
         db.session.add(rating_player_1)
         db.session.commit()
-        
-    if user_id_exists(player_2):
+
+    elif user_id_exists(player_2):
         rating_player_2 = Players.query.get(player_2).rating
 
-    else:
+    elif user_id_exists(player_2) == False:
         rating_player_2 = Players(user_id=player_2, rating=400)
         db.session.add(rating_player_2)
         db.session.commit()
+    
+    # In het geval een van de beide spelers nog niet bestond moeten ze 
+    # eerst opnieuw opgehaald worden, vandaar deze statement
+    if user_id_exists(player_1) and user_id_exists(player_2):
+        rating_player_1 = Players.query.get(player_1).rating
+        rating_player_2 = Players.query.get(player_2).rating
+        p1 = module.prob_win(rating_player_1, rating_player_2)
+        p2 = 1 - p1
         
+    else:
+        print('Spelers zijn niet succesvol aangemaakt')
+
+    # Rating 
+    if score_1 > score_2:
+        new_rating_p1 = module.update_rating(rating_player_1, 1, p1)
+        new_rating_p2 = module.update_rating(rating_player_2, 0, p2)
+        Players.query.get(player_1).rating = new_rating_p1
+        Players.query.get(player_2).rating = new_rating_p2
+    
+    elif score_1 < score_2:
+        new_rating_p1 = module.update_rating(rating_player_1, 0, p1)
+        new_rating_p2 = module.update_rating(rating_player_2, 1, p2)
+        
+        Players.query.get(player_1).rating = new_rating_p1
+        Players.query.get(player_2).rating = new_rating_p2
+
+    # Nieuwe wedstrijdgegevens naar de server sturen
+    new_match = MatchHistory(player_1=player_1, player_2=player_2, score_1=score_1, score_2=score_2)
+    db.session.add(new_match)
+    db.session.commit()
+    return redirect(url_for('index'))
+
+
+@app.route('/update/<int:match_id>', methods=['GET', 'POST'])
+def update_item(match_id):
+    """
+    Deze pagina wordt gebruikt voor het aanpassen van een bestaande uitslag. 
+    """
+    # Ophalen van wedstrijd die aangepast moet worden adhv match id
+    match_to_update = MatchHistory.query.get(match_id)
+    
+    # Deze serie van statements checkt of er iets in de velden ingevuld is. 
+    # Zo ja, wordt die waarde gebruikt. Zo nee, pakt die de oude waarde.
+    if bool(request.form.get('player_1')) == True:
+        player_1 = request.form.get('player_1')
+    else:
+        player_1 = match_to_update.player_1
+    
+    if bool(request.form.get('player_2')) == True:
+        player_2 = request.form.get('player_2')
+    else:
+        player_2 = match_to_update.player_2
+
+    if bool(request.form.get('score_1')) == True:
+        score_1 = int(request.form.get('score_1'))
+    else:
+        score_1 = int(match_to_update.score_1)
+
+    if bool(request.form.get('score_2')) == True:
+        score_2 = int(request.form.get('score_2'))
+    else:
+        score_2 = int(match_to_update.score_2)
+    
+    # Controlle of de scores niet gelijk zijn.
+    if score_1 == score_2:
+        return 'Score mag niet gelijk zijn'
+    else:
+        pass
+    
+    # Verrijken met nieuwe wedstrijd gegevens 
+    match_to_update.player_1 = player_1
+    match_to_update.player_2 = player_2
+    match_to_update.score_1 = score_1
+    match_to_update.score_2 = score_2
+    
+    # Nieuwe ratings
+    rating_player_1 = Players.query.get(player_1).rating
+    rating_player_2 = Players.query.get(player_2).rating
     
     p1 = module.prob_win(rating_player_1, rating_player_2)
     p2 = 1 - p1
@@ -110,41 +210,18 @@ def add_match():
         Players.query.get(player_1).rating = new_rating_p1
         Players.query.get(player_2).rating = new_rating_p2
     
-    if score_1 < score_2:
+    elif score_1 < score_2:
         new_rating_p1 = module.update_rating(rating_player_1, 0, p1)
         new_rating_p2 = module.update_rating(rating_player_2, 1, p2)
         
         Players.query.get(player_1).rating = new_rating_p1
         Players.query.get(player_2).rating = new_rating_p2
-        
-    elif score_1 == score_2:
-        return 'Score mag niet gelijk zijn'
 
-
-    new_match = MatchHistory(player_1=player_1, player_2=player_2, score_1=score_1, score_2=score_2)
-    db.session.add(new_match)
-    db.session.commit()
-    return redirect(url_for('index'))
-
-
-@app.route('/update/<int:match_id>', methods=['GET', 'POST'])
-def update_item(match_id):
-    match_to_update = MatchHistory.query.get_or_404(match_id)
-
-    if request.form.get('player_1'):
-        match_to_update.player_1 = request.form.get('player_1')
-    elif request.form.get('player_2'):
-        match_to_update.player_2 = request.form.get('player_2')
-    elif request.form.get('score_1'):
-        match_to_update.score_1 = request.form.get('score_1')
-    elif request.form.get('score_2'):
-        match_to_update.score_2 = request.form.get('score_2')
-    
+    # Insturen naar de server
     db.session.add(match_to_update)    
     db.session.commit()
-
+    
     return redirect(url_for('index'))
-
 
 if __name__ == '__main__':
     app.run(debug=True)

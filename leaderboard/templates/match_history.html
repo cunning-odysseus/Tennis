@@ -28,9 +28,6 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Hier wordt de tabel opeghaald die in de return statement 
-            van def index staat dit heet ook wel een liquid tag
-            -->
             {% for entry in match_history_table %}
                 {% if match_id == entry.match_id %}
                 <tr>
@@ -51,7 +48,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td>{{ entry.player_1 }}></td>
+                    <td>{{ entry.player_1 }}</td>
                     <td>{{ entry.player_2 }}</td>
                     <td>{{ entry.score_1 }}</td>
                     <td>{{ entry.score_2 }}</td>
@@ -77,7 +74,7 @@
         <tbody>
             {% for entry in Player_rating %}
                 <tr>
-                    <td>{{ entry.user_id }}></td>
+                    <td>{{ entry.user_id }}</td>
                     <td>{{ entry.rating }}</td>
                 </tr>
             {% endfor %}

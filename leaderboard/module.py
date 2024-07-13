@@ -7,17 +7,6 @@ def update_rating(current_rating, score, prob_win):
     """ 
     score: 1 for win, 0 for loss and 1/2 for draw
     """
-    new_rating = current_rating + 32*(score - prob_win)
+    new_rating = int(current_rating + 32*(score - prob_win))
     return new_rating
-
-
-p1 = prob_win(1656, 1763)
-p2 = 1 - p1
-
-update_p1 = update_rating(1656, 1, p1)
-print(update_p1)
-
-update_p2 = update_rating(1763, 0, p2)
-print(update_p2)
                              
-
