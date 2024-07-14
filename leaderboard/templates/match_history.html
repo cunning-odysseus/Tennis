@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <title>Table Tennis Leaderboard</title>
+</head>
+<body>
+    <h1>Table Tennis Leaderboard</h1>
+    <form action="{{ url_for('add_match') }}" method="POST">
+        <input type="text" name="player_1" placeholder="Player Name 1" required>
+        <input type="text" name="player_2" placeholder="Player Name 2" required>
+        <input type="number" name="score_1" placeholder="Score 1" required>
+        <input type="number" name="score_2" placeholder="Score 2" required>
+        <a href="/add">
+            <button type="submit">Add Match</button>
+        </a>
+    </form>
+    <table>
+        <thead>
+            <tr>
+                <th>Player_1</th>
+                <th>Player_2</th>
+                <th>Score_1</th>
+                <th>Score_2</th>
+                <th>date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in match_history_table %}
+                {% if match_id == entry.match_id %}
+                <tr>
+                    <form action="{{ url_for('update_item', match_id = entry.match_id) }}" method="POST">
+                    <td><input type="text" name="player_1" placeholder="{{ entry.player_1 }}"></td> 
+                    <td><input type="text" name="player_2" placeholder="{{ entry.player_2 }}"></td> 
+                    <td><input type="number" name="score_1" placeholder="{{ entry.score_1 }}"></td> 
+                    <td><input type="number" name="score_2" placeholder="{{ entry.score_2 }}"></td> 
+                    <td></td>
+                    <td>
+                        <!-- # TODO save knop verder maken -->
+                        <a href="/update/{{ entry.match_id }}">
+                            <button type="submit">Save</button>
+                        </a>
+                    </td>
+                    </form>
+
+                </tr>
+                {% else %}
+                <tr>
+                    <td>{{ entry.player_1 }}</td>
+                    <td>{{ entry.player_2 }}</td>
+                    <td>{{ entry.score_1 }}</td>
+                    <td>{{ entry.score_2 }}</td>
+                    <td> {{ entry.date }} </td>
+                    <td>
+                        <a href="/{{ entry.match_id }}">
+                            <button type="submit">Edit</button>
+                        </a>
+                    </td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+        </tbody> 
+     </table>
+
+     <table>
+        <thead>
+            <tr>
+                <th>Player</th>
+                <th>Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in Player_rating %}
+                <tr>
+                    <td>{{ entry.user_id }}</td>
+                    <td>{{ entry.rating }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+
+</body>
+</html>

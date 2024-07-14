@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<head>
+    <title>Update Item</title>
+</head>
+<body>
+    <h1> Update score </h1>
+    <form action="{{ url_for('update_item', match_id=match_to_update.match_id) }}" method='POST'>
+        <input type="text" name="player_1" value={{match_to_update.player_1}}>
+        <input type="text" name="player_2" value={{match_to_update.player_2}}>
+        <input type="number" name="score_1" value={{match_to_update.score_1}}>
+        <input type="number" name="score_2" value={{match_to_update.score_2}}>
+        <button type="submit">Edit match</button>
+    </form>
+</body>
+</html>
