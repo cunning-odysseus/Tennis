@@ -2,7 +2,9 @@ import os
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from sqlalchemy import and_, or_
 import module
+import re
 
 # Hier wordt een flask object gemaakt met de naam 'app'
 app = Flask(__name__)
@@ -43,7 +45,8 @@ class MatchHistory(db.Model):
     player_2 = db.Column(db.String(80), nullable=False)
     score_1 = db.Column(db.Integer, nullable=False)
     score_2 = db.Column(db.Integer, nullable=False)
-    date = db.Column(db.DateTime, default=datetime.now)
+    date = db.Column(db.String(80), nullable=False)
+    
     
 class Players(db.Model):
     user_id = db.Column(db.String(80), primary_key=True)
@@ -60,25 +63,44 @@ def user_id_exists(user_id):
 # HTML content in de string wordt gerenderd
 # @route verteld wat er moet worden laten zien wanneer je een bepaalde URL gebruikt in je browser
 # Hier staat / -> dus wanneer de hoofdpagina (index page) geladen wordt, dan wordt dit laten zien   
-@app.route('/')
-def index():
-    """ 
-    Dit is de hoofdpagina van de website.
-    Hier worden de tabellen met de uitslagen en ratings geladen, maar ook een form waarin wedstrijden
-    toegevoegd kunnen worden.
-    """
-    match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
-    player_rating = Players.query.order_by(Players.rating.desc()).all()
-    return render_template('match_history.html', match_history_table=match_history_table, Player_rating=player_rating)
 
-@app.route('/<int:match_id>')
-def index_id(match_id):
-    """ 
-    Dit is ook de hoofdpagina, maar dan nadat je op edit hebt geklikt
-    """
-    match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
+def invullen(regelid):
+    if len(request.args.keys()) == 0:
+        return f'{request.url}?edit={regelid}'
+    elif re.search(r"[?&]edit=", request.url):
+        return re.sub(r'edit=[0-9]+', 'edit=' + str(regelid), request.url)
+    else:
+        return f'{request.url}&edit={regelid}'
+
+@app.route('/', methods=['GET'])
+def index():
     player_rating = Players.query.order_by(Players.rating.desc()).all()
-    return render_template('match_history.html', match_history_table=match_history_table, match_id=match_id, Player_rating=player_rating)
+
+    if ('player' in request.args.keys() and bool(request.args['player'])) and ('date' in request.args.keys() and bool(request.args['date'])):
+        player_name = request.args['player']
+        date_search = request.args['date']
+        match_history_table = MatchHistory.query.filter(
+            and_
+                (or_(MatchHistory.player_1 == player_name, MatchHistory.player_2 == player_name)),
+                MatchHistory.date == date_search
+        )
+            
+    elif 'player' in request.args.keys() and bool(request.args['player']):
+        player_name = request.args['player']
+        match_history_table = MatchHistory.query.filter(or_(MatchHistory.player_1 == player_name, MatchHistory.player_2 == player_name))
+        
+    elif 'date' in request.args.keys() and bool(request.args['date']):
+        date_search = request.args['date']
+        match_history_table = MatchHistory.query.filter(MatchHistory.date == date_search)
+        
+    else:      
+        match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
+        
+    if 'edit' in request.args.keys():
+        match_id = int(request.args['edit'])
+        return render_template('home.html', match_history_table=match_history_table, match_id=match_id, Player_rating=player_rating, invullen=invullen)
+    
+    return render_template('home.html', match_history_table=match_history_table, Player_rating=player_rating, invullen=invullen)
 
 # Deze URL kan je niet bezoeken, maar dient alleen om iets in te voeren vandaar de methode POST
 @app.route('/add', methods=['POST'])
@@ -91,6 +113,11 @@ def add_match():
     player_2 = request.form.get('player_2')
     score_1 = request.form.get('score_1')
     score_2 = request.form.get('score_2')
+    date = request.form.get('date')   
+    datetime_object = datetime.strptime(date, "%Y-%m-%d")
+    
+    if datetime_object >= datetime.now():
+        return 'Mag niet in de toekomst zijn'
     
     # Controle op gelijkspel
     if score_1 == score_2:
@@ -114,7 +141,7 @@ def add_match():
         db.session.add(rating_player_1)
         db.session.commit()
 
-    elif user_id_exists(player_2):
+    if user_id_exists(player_2):
         rating_player_2 = Players.query.get(player_2).rating
 
     elif user_id_exists(player_2) == False:
@@ -124,12 +151,11 @@ def add_match():
     
     # In het geval een van de beide spelers nog niet bestond moeten ze 
     # eerst opnieuw opgehaald worden, vandaar deze statement
-    if user_id_exists(player_1) and user_id_exists(player_2):
+    if bool(user_id_exists(player_1)) and bool(user_id_exists(player_2)):
         rating_player_1 = Players.query.get(player_1).rating
         rating_player_2 = Players.query.get(player_2).rating
         p1 = module.prob_win(rating_player_1, rating_player_2)
-        p2 = 1 - p1
-        
+        p2 = 1 - p1 
     else:
         print('Spelers zijn niet succesvol aangemaakt')
 
@@ -148,7 +174,7 @@ def add_match():
         Players.query.get(player_2).rating = new_rating_p2
 
     # Nieuwe wedstrijdgegevens naar de server sturen
-    new_match = MatchHistory(player_1=player_1, player_2=player_2, score_1=score_1, score_2=score_2)
+    new_match = MatchHistory(player_1=player_1, player_2=player_2, score_1=score_1, score_2=score_2, date=date)
     db.session.add(new_match)
     db.session.commit()
     return redirect(url_for('index'))
@@ -202,7 +228,11 @@ def update_item(match_id):
     
     p1 = module.prob_win(rating_player_1, rating_player_2)
     p2 = 1 - p1
-    
+
+    # TODO Hier gaat iets niet helemaal goed. Ik wil eigenlijk dat de rating van voor de wedstrijd gebruikt wordt om 
+    # de nieuwe rating te berekenen bij een wijziging. Wat er nu gebeurd is dat de rating van na de wedstrijd die aangepast wordt
+    # gebruikt wordt om de nieuwe rating te berekenen. Het resultaat hiervan is dat je een onjuiste rating krijgt bij het wijzigen 
+    # en dat je wanneer je dezelfde uitslag houdt je toch een nieuwe rating krijgt. 
     if score_1 > score_2:
         new_rating_p1 = module.update_rating(rating_player_1, 1, p1)
         new_rating_p2 = module.update_rating(rating_player_2, 0, p2)
@@ -222,6 +252,7 @@ def update_item(match_id):
     db.session.commit()
     
     return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)

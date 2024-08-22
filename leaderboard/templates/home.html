@@ -4,21 +4,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <title>Table Tennis Leaderboard</title>
 </head>
 <body>
-    <h1>Table Tennis Leaderboard</h1>
+    <h2>Table Tennis Leaderboard</h2>
     <form action="{{ url_for('add_match') }}" method="POST">
         <input type="text" name="player_1" placeholder="Player Name 1" required>
         <input type="text" name="player_2" placeholder="Player Name 2" required>
         <input type="number" name="score_1" placeholder="Score 1" required>
         <input type="number" name="score_2" placeholder="Score 2" required>
+        <input type="date" name="date" required>
         <a href="/add">
             <button type="submit">Add Match</button>
         </a>
     </form>
-    <table>
+    <table class="table">
         <thead>
+            <tr>
+                <th>Filter
+                    <form action="/" method="GET">
+                        Speler <input type="text" name="player">
+                        Datum <input type="date" name="date">
+                        <button type="submit" class="btn btn-success">Filter</button>
+                    </form>
+                </th>
+            </tr>    
+
             <tr>
                 <th>Player_1</th>
                 <th>Player_2</th>
@@ -38,10 +50,8 @@
                     <td><input type="number" name="score_2" placeholder="{{ entry.score_2 }}"></td> 
                     <td></td>
                     <td>
-                        <!-- # TODO save knop verder maken -->
-                        <a href="/update/{{ entry.match_id }}">
-                            <button type="submit">Save</button>
-                        </a>
+                        <button type="submit" class="btn btn-success">Save</button>
+                        <a href="/" class="btn btn-danger">Annuleren</a>
                     </td>
                     </form>
 
@@ -54,17 +64,18 @@
                     <td>{{ entry.score_2 }}</td>
                     <td> {{ entry.date }} </td>
                     <td>
-                        <a href="/{{ entry.match_id }}">
-                            <button type="submit">Edit</button>
+                        <a href="{{ invullen(entry.match_id) }}">
+                            <button type="submit" class="btn btn-info">Edit</button>
                         </a>
                     </td>
                 </tr>
                 {% endif %}
             {% endfor %}
+        
         </tbody> 
      </table>
 
-     <table>
+     <table class="table">
         <thead>
             <tr>
                 <th>Player</th>
