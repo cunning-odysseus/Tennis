@@ -126,10 +126,10 @@ def add_match():
     player_2 = request.form.get('player_2')
     score_1 = request.form.get('score_1')
     score_2 = request.form.get('score_2')
-    date = request.form.get('date')   
-    datetime_object = datetime.strptime(date, "%Y-%m-%d")
+    date = datetime.strptime(request.form.get('datetime'), "%Y-%m-%dT%H:%M")
+    # datetime_object = datetime.strptime(date, "%Y-%m-%d")
     
-    if datetime_object >= datetime.now():
+    if date >= datetime.now():
         return 'Mag niet in de toekomst zijn'
     
     # Controle op gelijkspel
