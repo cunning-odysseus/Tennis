@@ -2,25 +2,13 @@ import sqlite3
 import csv
 import pandas as pd
 
-# # Connect to the database
-# conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-# cursor = conn.cursor()
-
-# # Export the data to a CSV file
-# with open('output.csv', 'w', newline='') as csvfile:
-#     cursor.execute('SELECT * FROM your_table')
-#     writer = csv.writer(csvfile)
-#     writer.writerows(cursor.fetchall())
-
-# Close the database connection
-# conn.close()
 
 def prob_win(current_rating_p1, current_rating_p2,):
     prob_player_1_win = 1 / ( 1 + 10**((current_rating_p1 - current_rating_p2)/400))
     
     return prob_player_1_win
 
-def update_rating(p1, p2, score_p1, score_p2, date, current_rating_p1=400, current_rating_p2=400):
+def update_rating(p1, p2, result_p1, result_p2, date, current_rating_p1=400, current_rating_p2=400):
     """ 
     score: 1 for win, 0 for loss and 1/2 for draw
     """
@@ -29,8 +17,8 @@ def update_rating(p1, p2, score_p1, score_p2, date, current_rating_p1=400, curre
     p_win_p1 = prob_win(current_rating_p1, current_rating_p2)
     p_win_p2 = 1 - p_win_p1
     
-    new_rating_player_1 = int(current_rating_p1 + 32*(score_p1 - p_win_p1))
-    new_ranking_player_2 = int(current_rating_p2 + 32*(score_p2 - p_win_p2))
+    new_rating_player_1 = int(current_rating_p1 + 32*(result_p1 - p_win_p1))
+    new_ranking_player_2 = int(current_rating_p2 + 32*(result_p2 - p_win_p2))
     
     result[f'p_win {p1}'] = p_win_p1
     result[f'p_win {p2}'] = p_win_p2
@@ -38,9 +26,43 @@ def update_rating(p1, p2, score_p1, score_p2, date, current_rating_p1=400, curre
     result[f'new_ranking_{p2}'] = new_ranking_player_2
     result['date'] = date
     return result
-
-# print(update_rating('Alisha', 'Michiel',1, 0, '8/7/24'))
  
-match_history_table = pd.read_csv('output.csv')
-print(match_history_table)
-                             
+column_names = ['match_id', 'p1', 'p2', 'score1', 'score2', 'date']
+match_history_table = pd.read_csv('/Users/caioeduardo/Documents/python_project/Tennis/output.csv', names=column_names)
+match_history_table = match_history_table.sort_values('date', ascending=True)
+
+# for row, value in match_history_table.items():
+def determine_result(row, player):
+    if player == 1:
+        if row['score1'] > row['score2']:
+            return 1
+        else:
+            return 0
+        
+    if player == 2:
+        if row['score2'] > row['score1']:
+            return 1
+        else:
+            return 0
+
+# Apply the function row-wise
+match_history_table['result_p1'] = match_history_table.apply(lambda row: determine_result(row, player=1), axis=1)
+match_history_table['result_p2'] = match_history_table.apply(lambda row: determine_result(row, player=2), axis=1)
+
+
+current_rating = {}
+for name in (list(match_history_table['p1'].drop_duplicates()) + list(match_history_table['p2'].drop_duplicates())):
+    current_rating[name] = 400
+
+
+for index, row in match_history_table.iterrows():
+    p1 = row['p1']
+    p2 = row['p2']
+    current_rating_p1 = current_rating[p1]
+    current_rating_p2 = current_rating[p2]
+    
+    table = update_rating(row['p1'], row['p2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
+    current_rating[p1] = table[f'new_rating_{p1}']
+    current_rating[p2] = table[f'new_ranking_{p2}']
+    
+print(current_rating)                

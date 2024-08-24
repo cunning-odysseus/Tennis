@@ -75,8 +75,18 @@ def invullen(regelid):
 
 @app.route('/', methods=['GET'])
 def index():
+    """
+    Hiermee wordt de hoofdpagina geladen
+    """
+    
+    # Hier wordt de tabel met ratings opgehaald
     player_rating = Players.query.order_by(Players.rating.desc()).all()
 
+    # De volgende if / else zijn er om de filter op de tabel te handelen
+    
+    # Als er in de filter een speler en een datum wordt meegegeven wordt er een GET request gestuurd met daarin de speler en datum in de payload.
+    # In de URL staat de speler en de datum en daarom wordt er hier met request.args.keys() gekeken wat dan meegestuurd is. Deze filosofie wordt ook
+    # bij de gevallen van enkel speler, enkel datum of niks toegepast.
     if ('player' in request.args.keys() and bool(request.args['player'])) and ('date' in request.args.keys() and bool(request.args['date'])):
         player_name = request.args['player']
         date_search = request.args['date']
@@ -85,7 +95,7 @@ def index():
                 (or_(MatchHistory.player_1 == player_name, MatchHistory.player_2 == player_name)),
                 MatchHistory.date == date_search
         )
-            
+        
     elif 'player' in request.args.keys() and bool(request.args['player']):
         player_name = request.args['player']
         match_history_table = MatchHistory.query.filter(or_(MatchHistory.player_1 == player_name, MatchHistory.player_2 == player_name))
@@ -93,10 +103,12 @@ def index():
     elif 'date' in request.args.keys() and bool(request.args['date']):
         date_search = request.args['date']
         match_history_table = MatchHistory.query.filter(MatchHistory.date == date_search)
-        
+    
     else:      
         match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
-        
+    
+    # Deze if handeld de edit knop op de homepagina hierbij wordt op dezelfde wijze als hierboven gekeken naar wat er in de GET request wordt gestuurd
+    # maar dan wordt dat hier als bepalende factor voor de pagina layout gebruikt. (of invulvelden worden geladen met save en annuleren knoppen)
     if 'edit' in request.args.keys():
         match_id = int(request.args['edit'])
         return render_template('home.html', match_history_table=match_history_table, match_id=match_id, Player_rating=player_rating, invullen=invullen)
