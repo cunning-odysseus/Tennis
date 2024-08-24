@@ -6,6 +6,7 @@ from sqlalchemy import and_, or_
 import module
 import re
 
+
 # Hier wordt een flask object gemaakt met de naam 'app'
 app = Flask(__name__)
 
@@ -256,3 +257,6 @@ def update_item(match_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+    
+    
+    
