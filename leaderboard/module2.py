@@ -18,12 +18,12 @@ def update_rating(p1, p2, result_p1, result_p2, date, current_rating_p1=400, cur
     p_win_p2 = 1 - p_win_p1
     
     new_rating_player_1 = int(current_rating_p1 + 32*(result_p1 - p_win_p1))
-    new_ranking_player_2 = int(current_rating_p2 + 32*(result_p2 - p_win_p2))
+    new_rating_player_2 = int(current_rating_p2 + 32*(result_p2 - p_win_p2))
     
     result[f'p_win {p1}'] = p_win_p1
     result[f'p_win {p2}'] = p_win_p2
     result[f'new_rating_{p1}'] = new_rating_player_1
-    result[f'new_ranking_{p2}'] = new_ranking_player_2
+    result[f'new_rating_{p2}'] = new_rating_player_2
     result['date'] = date
     return result
  

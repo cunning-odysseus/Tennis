@@ -49,8 +49,8 @@ class MatchHistory(db.Model):
     score_1 = db.Column(db.Integer, nullable=False)
     score_2 = db.Column(db.Integer, nullable=False)
     date = db.Column(db.DateTime, nullable=False)
-    ranking_p1 = db.Column(db.Integer, nullable=True)
-    ranking_p2 = db.Column(db.Integer, nullable=True)
+    ranking_p1 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
+    ranking_p2 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
     
     
 class Players(db.Model):
@@ -105,7 +105,7 @@ def index():
     
         table = module2.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
         current_rating[p1] = table[f'new_rating_{p1}']
-        current_rating[p2] = table[f'new_ranking_{p2}']
+        current_rating[p2] = table[f'new_ranting_{p2}']
         match_history.iloc[index, 6] = current_rating[p1]
         match_history.iloc[index, 7] = current_rating[p2]
     
