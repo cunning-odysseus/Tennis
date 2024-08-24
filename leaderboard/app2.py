@@ -83,6 +83,41 @@ def index():
     Hiermee wordt de hoofdpagina geladen
     """
     
+    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
+    conn.close()
+    
+    match_history['date'] = pd.to_datetime(match_history['date'])
+    match_history = match_history.sort_values('match_id', ascending=True)
+    
+    match_history['result_p1'] = match_history.apply(lambda row: module2.determine_result(row, player=1), axis=1)
+    match_history['result_p2'] = match_history.apply(lambda row: module2.determine_result(row, player=2), axis=1)
+    
+    current_rating = {}
+    for name in (list(match_history['player_1'].drop_duplicates()) + list(match_history['player_2'].drop_duplicates())):
+        current_rating[name] = 400
+        
+    for index, row in match_history.iterrows():
+        p1 = row['player_1']
+        p2 = row['player_2']
+        current_rating_p1 = current_rating[p1]
+        current_rating_p2 = current_rating[p2]
+    
+        table = module2.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
+        current_rating[p1] = table[f'new_rating_{p1}']
+        current_rating[p2] = table[f'new_ranking_{p2}']
+        match_history.iloc[index, 6] = current_rating[p1]
+        match_history.iloc[index, 7] = current_rating[p2]
+    
+    match_history = match_history.drop(columns=['result_p1', 'result_p2'])
+    match_history = match_history.sort_values('date', ascending=False)
+
+    # Write the DataFrame to the db
+    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    match_history.to_sql('match_history', conn, if_exists='replace', index=False)
+    conn.close()
+    
+    
     # Hier wordt de tabel met ratings opgehaald
     player_rating = Players.query.order_by(Players.rating.desc()).all()
     # De volgende if / else zijn er om de filter op de tabel te handelen
@@ -178,6 +213,7 @@ def add_match():
         current_rating[name] = 400
         
     for index, row in match_history.iterrows():
+        print(index)
         p1 = row['player_1']
         p2 = row['player_2']
         current_rating_p1 = current_rating[p1]
@@ -190,6 +226,7 @@ def add_match():
         match_history.iloc[(new_id-1), 7] = current_rating[p2]
     
     match_history = match_history.drop(columns=['result_p1', 'result_p2'])
+    match_history = match_history.sort_values('date', ascending=False)
 
     # Write the DataFrame to the db
     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
@@ -198,96 +235,97 @@ def add_match():
     return redirect(url_for('index'))
 
 
-# @app.route('/update/<int:match_id>', methods=['GET', 'POST'])
-# def update_item(match_id):
-#     """
-#     Deze pagina wordt gebruikt voor het aanpassen van een bestaande uitslag. 
-#     """
-#     # Ophalen van wedstrijd die aangepast moet worden adhv match id
-#     # match_to_update = MatchHistory.query.get(match_id)
-#     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-#     match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
-#     match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
-#     conn.close()
+@app.route('/update/<int:match_id>', methods=['POST'])
+def update_item(match_id):
+    """
+    Deze pagina wordt gebruikt voor het aanpassen van een bestaande uitslag. 
+    """
+    # Ophalen van wedstrijd die aangepast moet worden adhv match id
+    # match_to_update = MatchHistory.query.get(match_id)
+    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
+    match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
+    conn.close()
     
-#     # Deze serie van statements checkt of er iets in de velden ingevuld is. 
-#     # Zo ja, wordt die waarde gebruikt. Zo nee, pakt die de oude waarde.
-#     if bool(request.form.get('player_1')) == True:
-#         player_1 = request.form.get('player_1')
-#     else:
-#         player_1 = match_to_update.player_1
+    # Deze serie van statements checkt of er iets in de velden ingevuld is. 
+    # Zo ja, wordt die waarde gebruikt. Zo nee, pakt die de oude waarde.
+    if bool(request.form.get('player_1')) == True:
+        player_1 = request.form.get('player_1')
+    else:
+        player_1 = match_to_update.player_1
     
-#     if bool(request.form.get('player_2')) == True:  
-#         player_2 = request.form.get('player_2')
-#     else:
-#         player_2 = match_to_update.player_2
+    if bool(request.form.get('player_2')) == True:  
+        player_2 = request.form.get('player_2')
+    else:
+        player_2 = match_to_update.player_2
 
-#     if bool(request.form.get('score_1')) == True:
-#         score_1 = int(request.form.get('score_1'))
-#     else:
-#         score_1 = int(match_to_update.score_1)
+    if bool(request.form.get('score_1')) == True:
+        score_1 = int(request.form.get('score_1'))
+    else:
+        score_1 = int(match_to_update.score_1)
 
-#     if bool(request.form.get('score_2')) == True:
-#         score_2 = int(request.form.get('score_2'))
-#     else:
-#         score_2 = int(match_to_update.score_2)
+    if bool(request.form.get('score_2')) == True:
+        score_2 = int(request.form.get('score_2'))
+    else:
+        score_2 = int(match_to_update.score_2)
     
-#     # Controlle of de scores niet gelijk zijn.
-#     if score_1 == score_2:
-#         return 'Score mag niet gelijk zijn'
-#     else:
-#         pass
+    # Controlle of de scores niet gelijk zijn.
+    if score_1 == score_2:
+        return 'Score mag niet gelijk zijn'
+    else:
+        pass
     
-#     match_to_update['player_1'] = player_1
-#     match_to_update['player_2'] = player_2
-#     match_to_update['score_1'] = score_1
-#     match_to_update['score_2'] = score_2
-#     match_history = match_history.sort_values('date', ascending=False)
+    match_to_update['player_1'] = player_1
+    match_to_update['player_2'] = player_2
+    match_to_update['score_1'] = score_1
+    match_to_update['score_2'] = score_2
     
-#     match_history.loc[match_history['match_id'] == int(match_to_update['match_id'])] = match_to_update
+    match_history = match_history.sort_values('date', ascending=False)
+    # print(match_history)
+    # match_history.loc[match_history['match_id'] == int(match_to_update['match_id'])] = match_to_update
 
-#     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-#     match_history.to_sql('match_history', conn, if_exists='replace', index=False)
-#     conn.close()
+    # conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    # match_history.to_sql('match_history', conn, if_exists='replace', index=False)
+    # conn.close()
     
-#     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-#     match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
-#     conn.close()
+    # conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    # match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
+    # conn.close()
     
-#     match_history['date'] = pd.to_datetime(match_history['date'])
-#     match_history = match_history.sort_values('date')
+    # match_history['date'] = pd.to_datetime(match_history['date'])
+    # match_history = match_history.sort_values('date')
     
-#     # Apply the function row-wise
-#     match_history['result_p1'] = match_history.apply(lambda row: module2.determine_result(row, player=1), axis=1)
-#     match_history['result_p2'] = match_history.apply(lambda row: module2.determine_result(row, player=2), axis=1)
+    # # Apply the function row-wise
+    # match_history['result_p1'] = match_history.apply(lambda row: module2.determine_result(row, player=1), axis=1)
+    # match_history['result_p2'] = match_history.apply(lambda row: module2.determine_result(row, player=2), axis=1)
 
-#     current_rating = {}
-#     for name in (list(match_history['player_1'].drop_duplicates()) + list(match_history['player_2'].drop_duplicates())):
-#         current_rating[name] = 400
+    # current_rating = {}
+    # for name in (list(match_history['player_1'].drop_duplicates()) + list(match_history['player_2'].drop_duplicates())):
+    #     current_rating[name] = 400
         
-#     for index, row in match_history.iterrows():
-#         p1 = row['player_1']
-#         p2 = row['player_2']
-#         current_rating_p1 = current_rating[p1]
-#         current_rating_p2 = current_rating[p2]
+    # for index, row in match_history.iterrows():
+    #     p1 = row['player_1']
+    #     p2 = row['player_2']
+    #     current_rating_p1 = current_rating[p1]
+    #     current_rating_p2 = current_rating[p2]
     
-#         table = module2.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
-#         current_rating[p1] = table[f'new_rating_{p1}']
-#         current_rating[p2] = table[f'new_ranking_{p2}']
-#         match_history.iloc[int(row['match_id'])-1, 6] = current_rating[p1]
-#         match_history.iloc[(int(row['match_id'])-1), 7] = current_rating[p2]
+    #     table = module2.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
+    #     current_rating[p1] = table[f'new_rating_{p1}']
+    #     current_rating[p2] = table[f'new_ranking_{p2}']
+    #     match_history.iloc[int(row['match_id'])-1, 6] = current_rating[p1]
+    #     match_history.iloc[(int(row['match_id'])-1), 7] = current_rating[p2]
     
-#     match_history = match_history.drop(columns=['result_p1', 'result_p2'])
+    # match_history = match_history.drop(columns=['result_p1', 'result_p2'])
     
-#     match_history = match_history.sort_values('date', ascending=False)
-#     print(match_history)
+    # match_history = match_history.sort_values('date', ascending=False)
+    # print(match_history)
 
-#     # Write the DataFrame to the db
-#     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-#     match_history.to_sql('match_history', conn, if_exists='replace', index=False)
-#     conn.close()
+    # # Write the DataFrame to the db
+    # conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    # match_history.to_sql('match_history', conn, if_exists='replace', index=False)
+    # conn.close()
     
-#     return redirect(url_for('index'))
+    return redirect(url_for('index'))
 
 
 if __name__ == '__main__':
