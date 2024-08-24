@@ -105,7 +105,7 @@ def index():
     
         table = module2.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
         current_rating[p1] = table[f'new_rating_{p1}']
-        current_rating[p2] = table[f'new_ranting_{p2}']
+        current_rating[p2] = table[f'new_rating_{p2}']
         match_history.iloc[index, 6] = current_rating[p1]
         match_history.iloc[index, 7] = current_rating[p2]
     
@@ -140,7 +140,7 @@ def index():
         
     elif 'date' in request.args.keys() and bool(request.args['date']):
         date_search = request.args['date']
-        match_history_table = MatchHistory.query.filter(MatchHistory.date == date_search)
+        match_history_table = MatchHistory.query.filter(MatchHistory.date == date_search) # TODO Doordat ik datetime gebruik werkt dit niet goed meer
     
     else:      
         match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
@@ -202,8 +202,8 @@ def add_match():
         'ranking_p2': ''
     }, index=[0])
     match_history['date'] = pd.to_datetime(match_history['date'])
-    match_history = pd.concat([match_history, new_row], ignore_index=True).sort_values('date')
-    
+    match_history = pd.concat([match_history, new_row], ignore_index=True).sort_values('match_id', ascending=True)
+
     # Apply the function row-wise
     match_history['result_p1'] = match_history.apply(lambda row: module2.determine_result(row, player=1), axis=1)
     match_history['result_p2'] = match_history.apply(lambda row: module2.determine_result(row, player=2), axis=1)
@@ -213,7 +213,6 @@ def add_match():
         current_rating[name] = 400
         
     for index, row in match_history.iterrows():
-        print(index)
         p1 = row['player_1']
         p2 = row['player_2']
         current_rating_p1 = current_rating[p1]
@@ -221,12 +220,11 @@ def add_match():
     
         table = module2.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
         current_rating[p1] = table[f'new_rating_{p1}']
-        current_rating[p2] = table[f'new_ranking_{p2}']
+        current_rating[p2] = table[f'new_rating_{p2}']
         match_history.iloc[(new_id-1), 6] = current_rating[p1]
         match_history.iloc[(new_id-1), 7] = current_rating[p2]
     
     match_history = match_history.drop(columns=['result_p1', 'result_p2'])
-    match_history = match_history.sort_values('date', ascending=False)
 
     # Write the DataFrame to the db
     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
