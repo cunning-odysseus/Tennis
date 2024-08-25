@@ -83,65 +83,16 @@ def invullen(regelid):
 def index():
     """
     Hiermee wordt de hoofdpagina geladen.
-    Telkens als de hoofdpagina geladen wordt, worden de ratings opnieuw berekend en de database opnieuw ingevuld.
-    Daarnaast worden ook het filteren van de wedstrijdresultaten hier gehandeld en het renderen van invulvelden bij het
-    klikken op de edit knop op de pagina.
+    Telkens als de hoofdpagina geladen wordt, worden de ratings opnieuw opgehaald.
 
     """
-    
-    # # Verversen van de ratings
-    # conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
-    # match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
-    # conn.close() # Verbinding sluiten
-    
-    # match_history['date'] = pd.to_datetime(match_history['date']) # Zorgen dat de datums in het juiste format staan
-    # match_history = match_history.sort_values('date', ascending=True) # De wedstrijden sorteren van oud naar nieuw
-    
-    # # De functie determine result op elke rij toepassen zodat we weten welke speler gewonnen heeft
-    # # 1 is winst en 0 is verlies -> dit wordt weer gebruikt om te berekenen wat de rating van die speler wordt
-    # match_history['result_p1'] = match_history.apply(lambda row: module.determine_result(row, player=1), axis=1) 
-    # match_history['result_p2'] = match_history.apply(lambda row: module.determine_result(row, player=2), axis=1)
-    
-    # # Hier wordt een dictionary gemaakt waarbij alle spelers een startrating krijgen van 400.
-    # current_rating = {}
-    # for name in (set(list(match_history['player_1']) + list(match_history['player_2']))): # TODO spelers die in beide voorkomen
-    #     current_rating[name] = 400
-        
-    #     # SELECT name FROM ((SELECT player_1 AS name FROM match_history) UNION (SELECT player_2 AS name FROM match_history)) AS foo;
-    
-    # # Hier wordt voor iedere rij voor beide spelers hun rating berekend en toegevoegd aan de df
-    # for index, row in match_history.iterrows(): # Loop voor elke rij (wedstrijd)
-    #     p1 = row['player_1'] # Ophalen van de naam van speler 1 
-    #     p2 = row['player_2'] # Ophalen van de naam van speler 2
-    #     current_rating_p1 = current_rating[p1] # Huidige rating uit de dictionary ophalen voor speler 1
-    #     current_rating_p2 = current_rating[p2] # Huidige rating uit de dictionary ophalen voor speler 2
-    
-    #     # Functie toepassen op de rij om de ratings te berekenen. Deze functie geeft een dictionary terug met:
-    #     # probability_win_p1, probability_win_p2, new_rating_player_1, new_rating_player_2 en date
-    #     table = module.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
-        
-    #     # De nieuwe ratings van beide spelers in de dictionary 'current_rating' updaten.
-    #     current_rating[p1] = table[f'new_rating_{p1}']
-    #     current_rating[p2] = table[f'new_rating_{p2}']
-        
-    #     # De nieuwe ratings van beide spelers toevoegen aan de wedstrijd gegevens
-    #     match_history.iloc[index, 6] = current_rating[p1]
-    #     match_history.iloc[index, 7] = current_rating[p2]
-    
-    # match_history = match_history.drop(columns=['result_p1', 'result_p2']) # Hier worden de kolommen waarin de 1 of 0 staat voor winst/verlies verwijderd 
-    
-    # # Hier wordt de nieuwe versie weggeschreven naar de database
-    # conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-    # match_history.to_sql('match_history', conn, if_exists='replace', index=False)
-    # conn.close()
-    
+ 
     # Hier wordt de tabel met ratings opgehaald
     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
     match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
     conn.close() # Verbinding sluiten
     
     player_rating = module.most_recent_rating(match_history)
-    # player_rating = Players.query.order_by(Players.rating.desc()).all()
     
     # De volgende if / else zijn er om de filter op de tabel te handelen
     
@@ -241,10 +192,10 @@ def add_match():
     match_history['result_p2'] = match_history.apply(lambda row: module.determine_result(row, player=2), axis=1)
     
     # Hier wordt een dictionary gemaakt waarbij alle spelers een startrating krijgen van 400.
-    # current_rating = {}
-    # for name in (set(list(match_history['player_1']) + list(match_history['player_2']))):
-    #     current_rating[name] = 400
-    current_rating = module.most_recent_rating(match_history)
+    current_rating = {}
+    for name in (set(list(match_history['player_1']) + list(match_history['player_2']))):
+        current_rating[name] = 400
+
         
     # Hier wordt voor iedere rij voor beide spelers hun rating berekend en toegevoegd aan de df
     for index, row in match_history.iterrows(): # Loop voor elke rij (wedstrijd)
@@ -252,12 +203,13 @@ def add_match():
         p2 = row['player_2'] # Ophalen van de naam van speler 2
         current_rating_p1 = current_rating[p1] # Huidige rating uit de dictionary ophalen voor speler 1
         current_rating_p2 = current_rating[p2] # Huidige rating uit de dictionary ophalen voor speler 2
+
     
         # Functie toepassen op de rij om de ratings te berekenen. Deze functie geeft een dictionary terug met:
         # probability_win_p1, probability_win_p2, new_rating_player_1, new_rating_player_2 en date
         table = module.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
         
-        # De nieuwe ratings van beide spelers in de dictionary 'current_rating' updaten.
+        # # De nieuwe ratings van beide spelers in de dictionary 'current_rating' updaten.
         current_rating[p1] = table[f'new_rating_{p1}']
         current_rating[p2] = table[f'new_rating_{p2}']
         

@@ -53,7 +53,7 @@ def most_recent_rating(match_history):
             most_recent_rating = most_recent_date['ranking_p2'].iloc[0]
         
         else:
-            most_recent_rating = 400
+            print('player name not found')
         
         current_rating['Player'].append(name)
         current_rating['Rating'].append(most_recent_rating)
