@@ -83,10 +83,10 @@
             </tr>
         </thead>
         <tbody>
-            {% for entry in Player_rating %}
+            {% for index, row in Player_rating.iterrows(): %}
                 <tr>
-                    <td>{{ entry.user_id }}</td>
-                    <td>{{ entry.rating }}</td>
+                    <td>{{ row['Player'] }}</td>
+                    <td>{{ row['Rating'] }}</td>
                 </tr>
             {% endfor %}
         </tbody>

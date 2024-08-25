@@ -39,3 +39,30 @@ def determine_result(row, player):
         else:
             return 0
         
+def most_recent_rating(match_history):
+    current_rating = {'Player': [],
+                      'Rating': []}
+    for name in (set(list(match_history['player_1']) + list(match_history['player_2']))):
+        selection = match_history[(match_history['player_1'] == name) | (match_history['player_2'] == name)]
+        most_recent_date = selection[selection['date'] == selection['date'].max()]
+        
+        if name in most_recent_date['player_1'].values:
+            most_recent_rating = most_recent_date['ranking_p1'].iloc[0]
+        
+        elif name in most_recent_date['player_2'].values:
+            most_recent_rating = most_recent_date['ranking_p2'].iloc[0]
+        
+        else:
+            most_recent_rating = 400
+        
+        current_rating['Player'].append(name)
+        current_rating['Rating'].append(most_recent_rating)
+    
+    current_rating_df = pd.DataFrame(current_rating).sort_values('Rating', ascending=False)
+    
+    
+    return current_rating_df
+            
+
+        
+        
