@@ -1,12 +1,10 @@
 import os
-import sqlite3
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from sqlalchemy import and_, or_
-import module2
+import leaderboard.oude_scripts.module_oud as module_oud
 import re
-import pandas as pd
 
 
 # Hier wordt een flask object gemaakt met de naam 'app'
@@ -48,9 +46,7 @@ class MatchHistory(db.Model):
     player_2 = db.Column(db.String(80), nullable=False)
     score_1 = db.Column(db.Integer, nullable=False)
     score_2 = db.Column(db.Integer, nullable=False)
-    date = db.Column(db.DateTime, nullable=False)
-    ranking_p1 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
-    ranking_p2 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
+    date = db.Column(db.String(80), nullable=False)
     
     
 class Players(db.Model):
@@ -83,43 +79,9 @@ def index():
     Hiermee wordt de hoofdpagina geladen
     """
     
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-    match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
-    conn.close()
-    
-    match_history['date'] = pd.to_datetime(match_history['date'])
-    match_history = match_history.sort_values('match_id', ascending=True)
-    
-    match_history['result_p1'] = match_history.apply(lambda row: module2.determine_result(row, player=1), axis=1)
-    match_history['result_p2'] = match_history.apply(lambda row: module2.determine_result(row, player=2), axis=1)
-    
-    current_rating = {}
-    for name in (list(match_history['player_1'].drop_duplicates()) + list(match_history['player_2'].drop_duplicates())):
-        current_rating[name] = 400
-        
-    for index, row in match_history.iterrows():
-        p1 = row['player_1']
-        p2 = row['player_2']
-        current_rating_p1 = current_rating[p1]
-        current_rating_p2 = current_rating[p2]
-    
-        table = module2.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
-        current_rating[p1] = table[f'new_rating_{p1}']
-        current_rating[p2] = table[f'new_rating_{p2}']
-        match_history.iloc[index, 6] = current_rating[p1]
-        match_history.iloc[index, 7] = current_rating[p2]
-    
-    match_history = match_history.drop(columns=['result_p1', 'result_p2'])
-    match_history = match_history.sort_values('date', ascending=False)
-
-    # Write the DataFrame to the db
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-    match_history.to_sql('match_history', conn, if_exists='replace', index=False)
-    conn.close()
-    
-    
     # Hier wordt de tabel met ratings opgehaald
     player_rating = Players.query.order_by(Players.rating.desc()).all()
+
     # De volgende if / else zijn er om de filter op de tabel te handelen
     
     # Als er in de filter een speler en een datum wordt meegegeven wordt er een GET request gestuurd met daarin de speler en datum in de payload.
@@ -140,7 +102,7 @@ def index():
         
     elif 'date' in request.args.keys() and bool(request.args['date']):
         date_search = request.args['date']
-        match_history_table = MatchHistory.query.filter(MatchHistory.date == date_search) # TODO Doordat ik datetime gebruik werkt dit niet goed meer
+        match_history_table = MatchHistory.query.filter(MatchHistory.date == date_search)
     
     else:      
         match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
@@ -182,68 +144,62 @@ def add_match():
     else:
         pass
     
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-    match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
-    conn.close()
+    # Controle of de persoon al bestaat, zo ja dan bestaat er ook al een rating voor die persoon
+    # en kan daarmee gerekend worden. Zo nee, dan krijgt de speler een default rating van 400.
+    if user_id_exists(player_1):
+        rating_player_1 = Players.query.get(player_1).rating
+
+    elif user_id_exists(player_1) == False:
+        rating_player_1 = Players(user_id=player_1, rating=400)
+        db.session.add(rating_player_1)
+        db.session.commit()
+
+    if user_id_exists(player_2):
+        rating_player_2 = Players.query.get(player_2).rating
+
+    elif user_id_exists(player_2) == False:
+        rating_player_2 = Players(user_id=player_2, rating=400)
+        db.session.add(rating_player_2)
+        db.session.commit()
     
-    if len(match_history['match_id']) == 0:
-        new_id = 1
+    # In het geval een van de beide spelers nog niet bestond moeten ze 
+    # eerst opnieuw opgehaald worden, vandaar deze statement
+    if bool(user_id_exists(player_1)) and bool(user_id_exists(player_2)):
+        rating_player_1 = Players.query.get(player_1).rating
+        rating_player_2 = Players.query.get(player_2).rating
+        p1 = module_oud.prob_win(rating_player_1, rating_player_2)
+        p2 = 1 - p1 
     else:
-        new_id = int(match_history['match_id'].max() + 1)
-    
-    new_row = pd.DataFrame({
-        'match_id': new_id,
-        'player_1': player_1,
-        'player_2': player_2,
-        'score_1': score_1,
-        'score_2': score_2,
-        'date': date,
-        'ranking_p1': '',
-        'ranking_p2': ''
-    }, index=[0])
-    match_history['date'] = pd.to_datetime(match_history['date'])
-    match_history = pd.concat([match_history, new_row], ignore_index=True).sort_values('match_id', ascending=True)
+        print('Spelers zijn niet succesvol aangemaakt')
 
-    # Apply the function row-wise
-    match_history['result_p1'] = match_history.apply(lambda row: module2.determine_result(row, player=1), axis=1)
-    match_history['result_p2'] = match_history.apply(lambda row: module2.determine_result(row, player=2), axis=1)
+    # Rating 
+    if score_1 > score_2:
+        new_rating_p1 = module_oud.update_rating(rating_player_1, 1, p1)
+        new_rating_p2 = module_oud.update_rating(rating_player_2, 0, p2)
+        Players.query.get(player_1).rating = new_rating_p1
+        Players.query.get(player_2).rating = new_rating_p2
     
-    current_rating = {}
-    for name in (list(match_history['player_1'].drop_duplicates()) + list(match_history['player_2'].drop_duplicates())):
-        current_rating[name] = 400
+    elif score_1 < score_2:
+        new_rating_p1 = module_oud.update_rating(rating_player_1, 0, p1)
+        new_rating_p2 = module_oud.update_rating(rating_player_2, 1, p2)
         
-    for index, row in match_history.iterrows():
-        p1 = row['player_1']
-        p2 = row['player_2']
-        current_rating_p1 = current_rating[p1]
-        current_rating_p2 = current_rating[p2]
-    
-        table = module2.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
-        current_rating[p1] = table[f'new_rating_{p1}']
-        current_rating[p2] = table[f'new_rating_{p2}']
-        match_history.iloc[(new_id-1), 6] = current_rating[p1]
-        match_history.iloc[(new_id-1), 7] = current_rating[p2]
-    
-    match_history = match_history.drop(columns=['result_p1', 'result_p2'])
+        Players.query.get(player_1).rating = new_rating_p1
+        Players.query.get(player_2).rating = new_rating_p2
 
-    # Write the DataFrame to the db
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-    match_history.to_sql('match_history', conn, if_exists='replace', index=False)
-    conn.close()
+    # Nieuwe wedstrijdgegevens naar de server sturen
+    new_match = MatchHistory(player_1=player_1, player_2=player_2, score_1=score_1, score_2=score_2, date=date)
+    db.session.add(new_match)
+    db.session.commit()
     return redirect(url_for('index'))
 
 
-@app.route('/update/<int:match_id>', methods=['POST'])
+@app.route('/update/<int:match_id>', methods=['GET', 'POST'])
 def update_item(match_id):
     """
     Deze pagina wordt gebruikt voor het aanpassen van een bestaande uitslag. 
     """
     # Ophalen van wedstrijd die aangepast moet worden adhv match id
-    # match_to_update = MatchHistory.query.get(match_id)
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-    match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
-    match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
-    conn.close()
+    match_to_update = MatchHistory.query.get(match_id)
     
     # Deze serie van statements checkt of er iets in de velden ingevuld is. 
     # Zo ja, wordt die waarde gebruikt. Zo nee, pakt die de oude waarde.
@@ -252,7 +208,7 @@ def update_item(match_id):
     else:
         player_1 = match_to_update.player_1
     
-    if bool(request.form.get('player_2')) == True:  
+    if bool(request.form.get('player_2')) == True:
         player_2 = request.form.get('player_2')
     else:
         player_2 = match_to_update.player_2
@@ -273,55 +229,40 @@ def update_item(match_id):
     else:
         pass
     
-    match_to_update['player_1'] = player_1
-    match_to_update['player_2'] = player_2
-    match_to_update['score_1'] = score_1
-    match_to_update['score_2'] = score_2
+    # Verrijken met nieuwe wedstrijd gegevens 
+    match_to_update.player_1 = player_1
+    match_to_update.player_2 = player_2
+    match_to_update.score_1 = score_1
+    match_to_update.score_2 = score_2
     
-    match_history = match_history.sort_values('date', ascending=False)
-    # print(match_history)
-    # match_history.loc[match_history['match_id'] == int(match_to_update['match_id'])] = match_to_update
+    # Nieuwe ratings
+    rating_player_1 = Players.query.get(player_1).rating
+    rating_player_2 = Players.query.get(player_2).rating
+    
+    p1 = module_oud.prob_win(rating_player_1, rating_player_2)
+    p2 = 1 - p1
 
-    # conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-    # match_history.to_sql('match_history', conn, if_exists='replace', index=False)
-    # conn.close()
-    
-    # conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-    # match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
-    # conn.close()
-    
-    # match_history['date'] = pd.to_datetime(match_history['date'])
-    # match_history = match_history.sort_values('date')
-    
-    # # Apply the function row-wise
-    # match_history['result_p1'] = match_history.apply(lambda row: module2.determine_result(row, player=1), axis=1)
-    # match_history['result_p2'] = match_history.apply(lambda row: module2.determine_result(row, player=2), axis=1)
-
-    # current_rating = {}
-    # for name in (list(match_history['player_1'].drop_duplicates()) + list(match_history['player_2'].drop_duplicates())):
-    #     current_rating[name] = 400
+    # TODO Hier gaat iets niet helemaal goed. Ik wil eigenlijk dat de rating van voor de wedstrijd gebruikt wordt om 
+    # de nieuwe rating te berekenen bij een wijziging. Wat er nu gebeurd is dat de rating van na de wedstrijd die aangepast wordt
+    # gebruikt wordt om de nieuwe rating te berekenen. Het resultaat hiervan is dat je een onjuiste rating krijgt bij het wijzigen 
+    # en dat je wanneer je dezelfde uitslag houdt je toch een nieuwe rating krijgt. 
+    if score_1 > score_2:
+        new_rating_p1 = module_oud.update_rating(rating_player_1, 1, p1)
+        new_rating_p2 = module_oud.update_rating(rating_player_2, 0, p2)
         
-    # for index, row in match_history.iterrows():
-    #     p1 = row['player_1']
-    #     p2 = row['player_2']
-    #     current_rating_p1 = current_rating[p1]
-    #     current_rating_p2 = current_rating[p2]
+        Players.query.get(player_1).rating = new_rating_p1
+        Players.query.get(player_2).rating = new_rating_p2
     
-    #     table = module2.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
-    #     current_rating[p1] = table[f'new_rating_{p1}']
-    #     current_rating[p2] = table[f'new_ranking_{p2}']
-    #     match_history.iloc[int(row['match_id'])-1, 6] = current_rating[p1]
-    #     match_history.iloc[(int(row['match_id'])-1), 7] = current_rating[p2]
-    
-    # match_history = match_history.drop(columns=['result_p1', 'result_p2'])
-    
-    # match_history = match_history.sort_values('date', ascending=False)
-    # print(match_history)
+    elif score_1 < score_2:
+        new_rating_p1 = module_oud.update_rating(rating_player_1, 0, p1)
+        new_rating_p2 = module_oud.update_rating(rating_player_2, 1, p2)
+        
+        Players.query.get(player_1).rating = new_rating_p1
+        Players.query.get(player_2).rating = new_rating_p2
 
-    # # Write the DataFrame to the db
-    # conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-    # match_history.to_sql('match_history', conn, if_exists='replace', index=False)
-    # conn.close()
+    # Insturen naar de server
+    db.session.add(match_to_update)    
+    db.session.commit()
     
     return redirect(url_for('index'))
 
