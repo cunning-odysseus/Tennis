@@ -8,7 +8,7 @@ import module
 import re
 import pandas as pd
 
-# TODO delete knop toevoegen, tabel korter maken dmv pagina's ,pagina mooi maken
+# TODO delete knop toevoegen, tabel korter maken dmv pagina's, pagina mooi maken
 
 # Hier wordt een flask object gemaakt met de naam 'app'
 app = Flask(__name__)
@@ -317,8 +317,34 @@ def update_item(match_id):
     
     return redirect(url_for('index'))
 
+@app.route('/delete/<int:match_id>', methods=['GET'])
+def delete_item(match_id):
+    
+    # Ophalen van wedstrijd die aangepast moet worden adhv match id
+    # match_to_update = MatchHistory.query.get(match_id)
+    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
+    match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
+    conn.close()
+    
+    # Wedstrijd eruit halen
+    match_history = match_history[match_history['match_id'] != match_id]
+    
+    # Match_id's lopen niet perfect meer op omdat een getal mist wanneer een match_id niet de nieuwste was
+    # Daarom de id's resetten voordat ze weer naar de database gestuurd worden
+    nieuwe_ids = list(range(1,len(match_history['match_id']) + 1))
+    match_history['match_id'] = nieuwe_ids
+    
+    # Hier wordt de nieuwe versie weggeschreven naar de database
+    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    match_history.to_sql('match_history', conn, if_exists='replace', index=False)
+    conn.close()
+
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     app.run(debug=True)
+    
     
     
     
