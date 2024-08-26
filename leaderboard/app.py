@@ -8,8 +8,7 @@ import module
 import re
 import pandas as pd
 
-# TODO filter voor datums fixen, delete knop toevoegen, tabel korter maken dmv pagina's ,pagina mooi maken
-# TODO functie maken die huidige rating pakt en die ook aanroepen op de hoofdpagina
+# TODO delete knop toevoegen, tabel korter maken dmv pagina's ,pagina mooi maken
 
 # Hier wordt een flask object gemaakt met de naam 'app'
 app = Flask(__name__)
@@ -84,7 +83,6 @@ def index():
     """
     Hiermee wordt de hoofdpagina geladen.
     Telkens als de hoofdpagina geladen wordt, worden de ratings opnieuw opgehaald.
-
     """
  
     # Hier wordt de tabel met ratings opgehaald
@@ -105,7 +103,7 @@ def index():
         match_history_table = MatchHistory.query.filter(
             and_
                 (or_(MatchHistory.player_1 == player_name, MatchHistory.player_2 == player_name)),
-                MatchHistory.date == date_search
+                MatchHistory.date.like(f'{date_search}%')
         )
         
     elif 'player' in request.args.keys() and bool(request.args['player']):
@@ -114,7 +112,8 @@ def index():
         
     elif 'date' in request.args.keys() and bool(request.args['date']):
         date_search = request.args['date']
-        match_history_table = MatchHistory.query.filter(MatchHistory.date == date_search) # TODO Doordat ik datetime gebruik werkt dit niet goed meer
+        print(type(date_search))
+        match_history_table = MatchHistory.query.filter(MatchHistory.date.like(f'{date_search}%')) 
     
     else:      
         match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
@@ -282,18 +281,17 @@ def update_item(match_id):
     match_history['result_p2'] = match_history.apply(lambda row: module.determine_result(row, player=2), axis=1)
     
     # Hier wordt een dictionary gemaakt waarbij alle spelers een startrating krijgen van 400.
-    # current_rating = {}
-    # for name in (set(list(match_history['player_1']) + list(match_history['player_2']))):
-    #     current_rating[name] = 400
-    current_rating = module.most_recent_rating(match_history)
-        
+    current_rating = {}
+    for name in (set(list(match_history['player_1']) + list(match_history['player_2']))):
+        current_rating[name] = 400
+
     # Hier wordt voor iedere rij voor beide spelers hun rating berekend en toegevoegd aan de df
     for index, row in match_history.iterrows(): # Loop voor elke rij (wedstrijd)
         p1 = row['player_1'] # Ophalen van de naam van speler 1 
         p2 = row['player_2'] # Ophalen van de naam van speler 2
         current_rating_p1 = current_rating[p1] # Huidige rating uit de dictionary ophalen voor speler 1
-        current_rating_p2 = current_rating[p2] # Huidige rating uit de dictionary ophalen voor speler 2
-    
+        current_rating_p2 = current_rating[p2] # Huidige rating uit de dictionary ophalen voor speler 2   
+        
         # Functie toepassen op de rij om de ratings te berekenen. Deze functie geeft een dictionary terug met:
         # probability_win_p1, probability_win_p2, new_rating_player_1, new_rating_player_2 en date
         table = module.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
@@ -306,7 +304,6 @@ def update_item(match_id):
         match_history.iloc[(index), 6] = current_rating[p1]
         match_history.iloc[(index), 7] = current_rating[p2]
  
-    
     match_history = match_history.drop(columns=['result_p1', 'result_p2']) # Hier worden de kolommen waarin de 1 of 0 staat voor winst/verlies verwijderd 
     
     # Dit is ter zekerheid dat de bestandstypes goed zijn
