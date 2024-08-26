@@ -50,9 +50,8 @@ class MatchHistory(db.Model):
     score_1 = db.Column(db.Integer, nullable=False)
     score_2 = db.Column(db.Integer, nullable=False)
     date = db.Column(db.DateTime, nullable=False)
-    ranking_p1 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
-    ranking_p2 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
-    
+    rating_p1 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
+    rating_p2 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
     
 class Players(db.Model):
     user_id = db.Column(db.String(80), primary_key=True)

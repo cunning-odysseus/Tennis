@@ -47,10 +47,10 @@ def most_recent_rating(match_history):
         most_recent_date = selection[selection['date'] == selection['date'].max()]
         
         if name in most_recent_date['player_1'].values:
-            most_recent_rating = most_recent_date['ranking_p1'].iloc[0]
+            most_recent_rating = most_recent_date['rating_p1'].iloc[0]
         
         elif name in most_recent_date['player_2'].values:
-            most_recent_rating = most_recent_date['ranking_p2'].iloc[0]
+            most_recent_rating = most_recent_date['rating_p2'].iloc[0]
         
         else:
             print('player name not found')
