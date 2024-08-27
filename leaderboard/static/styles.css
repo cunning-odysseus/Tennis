@@ -1,29 +1,27 @@
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
+    height: 100%;
     padding: 20px;
     background-color: #f4f4f4;
 }
-
-h1 {
-    color: #333;
+html {
+    height: 100%;
 }
 
-form {
-    margin-bottom: 20px;
+.scroll-homepage {
+    max-height: calc((100% - 189px) / 2); 
+    overflow: auto
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
+.table {
+    margin-bottom: 0 !important;
 }
 
-th, td {
-    padding: 10px;
-    border: 1px solid #ddd;
-    text-align: left;
+.fixed-table {
+    table-layout: fixed
 }
 
-th {
-    background-color: #f2f2f2;
+.sticky-head { 
+    position: sticky; 
+    top: 0; 
+    left: 0
 }
