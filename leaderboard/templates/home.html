@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Dit zijn de instellingen voor de website -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
     <title>Table Tennis Leaderboard</title>
 </head>
+
 <body>
-    <h2>Table Tennis Leaderboard</h2>
+    <!-- Dit zijn de invulvelden waar je een wedstrijd kunt toevoegen-->
+    <header> <strong> Wedstrijd toevoegen </strong> </header>
     <form action="{{ url_for('add_match') }}" method="POST">
         <input type="text" name="player_1" placeholder="Player Name 1" required>
         <input type="text" name="player_2" placeholder="Player Name 2" required>
@@ -19,8 +22,44 @@
             <button type="submit">Add Match</button>
         </a>
     </form>
+
+    <!-- Dit is de tabel waarin de wedstrijdgeschiedenis staat met in de header een filter -->
     <table class="table">
         <thead>
+            <style>
+                table.scrolldown {
+                    width: 100%;
+        
+                    /* border-collapse: collapse; */
+                    border-spacing: 0;
+                    border: 2px solid black;
+                }
+        
+                /* To display the block as level element */
+                table.scrolldown tbody,
+                table.scrolldown thead {
+                    display: block;
+                }
+        
+                thead tr th {
+                    height: 40px;
+                    line-height: 40px;
+                }
+        
+                table.scrolldown tbody {
+        
+                    /* Set the height of table body */
+                    height: 50px;
+        
+                    /* Set vertical scroll */
+                    overflow-y: auto;
+        
+                    /* Hide the horizontal scroll */
+                    overflow-x: hidden;
+                }
+        
+            </style>
+
             <tr>
                 <th>Filter
                     <form action="/" method="GET">
@@ -79,8 +118,18 @@
         </tbody> 
      </table>
 
+    <!-- Dit is de tabel waarin de ratings getoond worden-->
      <table class="table">
         <thead>
+            <tr>
+                <th>Filter
+                    <form action="/" method="GET">
+                        Speler <input type="text" name="player_rating">
+                        <button type="submit" class="btn btn-success">Filter</button>
+                    </form>
+                </th>
+            </tr>   
+
             <tr>
                 <th>Player</th>
                 <th>Rating</th>

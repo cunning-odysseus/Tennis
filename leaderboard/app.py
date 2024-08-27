@@ -8,7 +8,8 @@ import module
 import re
 import pandas as pd
 
-# TODO delete knop toevoegen, tabel korter maken dmv pagina's, pagina mooi maken
+# TODO tabel korter maken dmv pagina's, pagina mooi maken
+# TODO spelers statistieken maken -> Aantal wedstrijden gespeeld, aantal gewonnen/verloren, grafiek met rating verloop
 
 # Hier wordt een flask object gemaakt met de naam 'app'
 app = Flask(__name__)
@@ -89,6 +90,7 @@ def index():
     match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
     conn.close() # Verbinding sluiten
     
+    # Ophalne van de meest recente player ratings
     player_rating = module.most_recent_rating(match_history)
     
     # De volgende if / else zijn er om de filter op de tabel te handelen
@@ -116,6 +118,14 @@ def index():
     
     else:      
         match_history_table = MatchHistory.query.order_by(MatchHistory.date.desc()).all()
+        
+    # Filter voor de ratings
+    if 'player_rating' in request.args.keys() and bool(request.args['player_rating']):
+        player_name = request.args['player_rating']
+        player_rating = player_rating[player_rating['Player'] == player_name] # In tegenstelling tot de wedstrijdgeschiedenis is deze data in de form van een df
+        
+    else:
+        pass
     
     # Deze if handeld de edit knop op de homepagina hierbij wordt op dezelfde wijze als hierboven gekeken naar wat er in de GET request wordt gestuurd
     # maar dan wordt dat hier als bepalende factor voor de pagina layout gebruikt. (of invulvelden worden geladen met save en annuleren knoppen)
