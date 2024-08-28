@@ -8,7 +8,6 @@ import module
 import re
 import pandas as pd
 
-# TODO tabel korter maken dmv pagina's, pagina mooi maken
 # TODO spelers statistieken maken -> Aantal wedstrijden gespeeld, aantal gewonnen/verloren, grafiek met rating verloop
 
 # Hier wordt een flask object gemaakt met de naam 'app'

@@ -58,7 +58,7 @@ def most_recent_rating(match_history):
         current_rating['Player'].append(name)
         current_rating['Rating'].append(most_recent_rating)
     
-    current_rating_df = pd.DataFrame(current_rating,).sort_values('Rating', ascending=False)
+    current_rating_df = pd.DataFrame(current_rating,).sort_values('Rating', ascending=False).reset_index()
     
     return current_rating_df
             
