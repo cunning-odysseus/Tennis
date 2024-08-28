@@ -135,19 +135,18 @@ def index():
     return render_template('home.html', match_history_table=match_history_table, Player_rating=player_rating, invullen=invullen)
 
 # Deze URL kan je niet bezoeken, maar dient alleen om iets in te voeren vandaar de methode POST
-@app.route('/add', methods=['POST'])
+@app.route('/add', methods=['GET'])
 def add_match():
     """ 
     Dit is de pagina waarin een post verstuurd wordt naar de server met de wedstrijd input.
     Na het binnenkrijgen van de wedstrijdgegevens wordt hier aan de backend ook een nieuwe berekening gemaakt van de ratings.
     """
     # Hier wordt de informatie opgehaald uit de velden
-    player_1 = request.form.get('player_1')
-    player_2 = request.form.get('player_2')
-    score_1 = request.form.get('score_1')
-    score_2 = request.form.get('score_2')
-    date = datetime.strptime(request.form.get('datetime'), "%Y-%m-%dT%H:%M")
-    # datetime_object = datetime.strptime(date, "%Y-%m-%d")
+    player_1 = request.args['player_1']
+    player_2 = request.args['player_2']
+    score_1 = request.args['score_1']
+    score_2 = request.args['score_2']
+    date = datetime.strptime(request.args['datetime'], "%Y-%m-%dT%H:%M")
     
     if date >= datetime.now():
         return 'Mag niet in de toekomst zijn'
