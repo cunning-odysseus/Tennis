@@ -53,7 +53,7 @@
         </div>
 
     <label> <strong> Player statistics summary </strong> </label>
-    <div class="scroll-homepage mt-2">
+    <div class="scroll-player_stat_page mt-2">
         <!-- Dit is de tabel met statistieken -->
         <table class="table table-sm">
             <thead class="sticky-head table-dark">
@@ -80,7 +80,7 @@
 
     <div class="mt-2">
     <!-- Dit is de plot met alle rating progressie -->
-    <label class="form-label"> <strong> Rating progression plot </strong> </label>
+    
         <div id="plotly-div"></div>
         <script type="text/javascript">
             var graphJSON = {{ graphJSON | safe }};

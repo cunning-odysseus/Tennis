@@ -23,6 +23,6 @@ html {
 }
 
 .scroll-player_stat_page {
-    max-height: calc((100% - 639px)); 
+    max-height: calc((100% - 589px)); 
     overflow: auto
 }

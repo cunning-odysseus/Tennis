@@ -164,6 +164,12 @@ def index_player_stats():
             mode='lines+markers',
             name=player
         ))
+        
+        fig.update_layout(
+            title='Player Rating Progression Over Time',
+            xaxis_title='Date',
+            yaxis_title='Rating'
+    )
 
     # Convert the figure to JSON for rendering in the template
     graphJSON = pio.to_json(fig)
