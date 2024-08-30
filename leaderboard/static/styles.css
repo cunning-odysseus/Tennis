@@ -8,7 +8,7 @@ html {
 }
 
 .scroll-homepage {
-    max-height: calc((100% - 189px) / 2); 
+    max-height: calc((100% - 257px) / 2); 
     overflow: auto
 }
 
@@ -16,12 +16,13 @@ html {
     margin-bottom: 0 !important;
 }
 
-.fixed-table {
-    table-layout: fixed
-}
-
 .sticky-head { 
     position: sticky; 
     top: 0; 
     left: 0
+}
+
+.scroll-player_stat_page {
+    max-height: calc((100% - 639px)); 
+    overflow: auto
 }

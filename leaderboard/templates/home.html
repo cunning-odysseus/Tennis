@@ -11,14 +11,30 @@
 </head>
 
 <body>
-    <div>
-        <!-- Dit is de titel -->
-        <h2 class="form-label"> <strong> Tabletennis leaderboard </strong> </h2>
-    </div>
+
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <label> <strong> Table Tennis Leaderboard </strong> </label>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="/">Home</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="/player_statistics">Player statistics</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
 
     <div >
-        <!-- Dit is de filter voor de wedstrijdgeschiedenis -->
-            <form action="{{ url_for('add_match') }}" method="GET">
+        <!-- Form voor het toevoegen van een wedstrijd -->
+        <label> <strong> Add match </strong> </label>
+            <form action="{{ url_for('add_match') }}" method="POST">
                 <div class="row g-2">
     
                     <div class="col-md-2">
@@ -38,7 +54,7 @@
                     </div>
 
                     <div class="col-md-2">
-                        <input type="datetime-local"  name="datetime" placeholder="Date">
+                        <input type="datetime-local"  class="form-control form-control-sm" name="datetime" placeholder="Date">
                     </div>
 
                     <div class="col-md-2">
@@ -75,7 +91,7 @@
         </form>
     </div>
 
-    <!-- Dit is de tabel waarin de wedstrijdgeschiedenis staat met in de header een filter -->
+    <!-- Dit is de tabel waarin de wedstrijdgeschiedenis staat -->
     <div class="scroll-homepage mt-2">
         <table class="table table-sm" >
             <thead class="sticky-head table-dark" >  
@@ -103,8 +119,8 @@
                         <td></td>
                         <td>
                             <button type="submit" class="btn btn-success btn-sm">Save</button>
-                            <a href="{{url_for('delete_item', match_id = entry.match_id) }}" class="btn btn-danger btn-sm">Delete</a>
-                            <a href="/" class="btn btn-warning btn-sm">Cancel</a>
+                            <a href="{{url_for('delete_item', match_id = entry.match_id) }}" class="btn btn-danger btn-sm" role="button" >Delete</a>
+                            <a href="/" class="btn btn-warning btn-sm" role="button">Cancel</a>
                         </td>
                         </form>
 
@@ -117,7 +133,7 @@
                         <td>{{ entry.score_2 }}</td>
                         <td> {{ entry.date }} </td>
                         <td>
-                                <a class="btn btn-info btn-sm" href="{{ invullen(entry.match_id) }}" role="button">Edit</a>
+                            <a class="btn btn-info btn-sm" href="{{ invullen(entry.match_id) }}" role="button">Edit</a>
                         </td>
                     </tr>
                     {% endif %}

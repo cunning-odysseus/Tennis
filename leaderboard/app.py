@@ -7,8 +7,9 @@ from sqlalchemy import and_, or_
 import module 
 import re
 import pandas as pd
-
-# TODO spelers statistieken maken -> Aantal wedstrijden gespeeld, aantal gewonnen/verloren, grafiek met rating verloop
+import plotly.graph_objs as go
+import plotly.io as pio
+import json
 
 # Hier wordt een flask object gemaakt met de naam 'app'
 app = Flask(__name__)
@@ -134,19 +135,56 @@ def index():
     
     return render_template('home.html', match_history_table=match_history_table, Player_rating=player_rating, invullen=invullen)
 
+@app.route('/player_statistics', methods=['GET'])
+def index_player_stats():
+    
+    # Hier wordt de tabel met ratings opgehaald
+    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
+    match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
+    conn.close() # Verbinding sluiten
+
+    stats = module.player_statistics(match_history)
+    rating_progression = module.player_rating_progression(match_history)
+    
+    if 'player' in request.args.keys() and bool(request.args['player']):
+        player_name = request.args['player']
+        stats = stats[stats['Player'] == player_name]
+    else:
+        pass
+
+    # Initialize an empty figure
+    fig = go.Figure()
+
+    # Create a trace for each player
+    for player in rating_progression['Player'].unique():
+        player_data = rating_progression[rating_progression['Player'] == player]
+        fig.add_trace(go.Scatter(
+            x=player_data['Date'],
+            y=player_data['Rating'],
+            mode='lines+markers',
+            name=player
+        ))
+
+    # Convert the figure to JSON for rendering in the template
+    graphJSON = pio.to_json(fig)
+
+    # Pass the JSON data to the template
+    return render_template('player_statistics.html', graphJSON=graphJSON, stats=stats)
+
+
 # Deze URL kan je niet bezoeken, maar dient alleen om iets in te voeren vandaar de methode POST
-@app.route('/add', methods=['GET'])
+@app.route('/add', methods=['POST'])
 def add_match():
     """ 
     Dit is de pagina waarin een post verstuurd wordt naar de server met de wedstrijd input.
     Na het binnenkrijgen van de wedstrijdgegevens wordt hier aan de backend ook een nieuwe berekening gemaakt van de ratings.
     """
     # Hier wordt de informatie opgehaald uit de velden
-    player_1 = request.args['player_1']
-    player_2 = request.args['player_2']
-    score_1 = request.args['score_1']
-    score_2 = request.args['score_2']
-    date = datetime.strptime(request.args['datetime'], "%Y-%m-%dT%H:%M")
+    player_1 = request.form.get('player_1')
+    player_2 = request.form.get('player_2')
+    score_1 = int(request.form.get('score_1'))
+    score_2 = int(request.form.get('score_2'))
+    date = datetime.strptime(request.form.get('datetime'), "%Y-%m-%dT%H:%M")
     
     if date >= datetime.now():
         return 'Mag niet in de toekomst zijn'
