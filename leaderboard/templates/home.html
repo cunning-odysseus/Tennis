@@ -19,8 +19,12 @@
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
                     <li class="nav-item">
+                        <a class="nav-link active" href="/logout">Logout</a>
+                    </li> 
+
+                    <li class="nav-item">
                         <a class="nav-link active" aria-current="page" href="/">Home</a>
-                    </li>
+                    </li>                  
 
                     <li class="nav-item">
                         <a class="nav-link active" aria-current="page" href="/player_statistics">Player statistics</a>
@@ -105,39 +109,53 @@
                 </tr>
             </thead>
             <tbody>
-                {% for entry in match_history_table %}
-                    {% if match_id == entry.match_id %}
-                    <tr>
-                        <!-- 
-                        Bij een form kun je zowel post als get gebruiken, bij a href kun je alleen get gebruiken en put/delete alleen via javascript 
-                        -->
-                        <form action="{{ url_for('update_item', match_id = entry.match_id) }}" method="POST">
-                        <td><input type="text" class="form-control form-control-sm" name="Player 1" placeholder="{{ entry.player_1 }}"></td> 
-                        <td><input type="text" class="form-control form-control-sm" name="Player 2" placeholder="{{ entry.player_2 }}"></td> 
-                        <td><input type="number" class="form-control form-control-sm" name="Score 1" placeholder="{{ entry.score_1 }}"></td> 
-                        <td><input type="number" class="form-control form-control-sm" name="Score 2" placeholder="{{ entry.score_2 }}"></td> 
-                        <td></td>
-                        <td>
-                            <button type="submit" class="btn btn-success btn-sm">Save</button>
-                            <a href="{{url_for('delete_item', match_id = entry.match_id) }}" class="btn btn-danger btn-sm" role="button" >Delete</a>
-                            <a href="/" class="btn btn-warning btn-sm" role="button">Cancel</a>
-                        </td>
-                        </form>
+                {% if current_user.email == 'caiovanbeek@hotmail.com' %}
+                    {% for entry in match_history_table %}
+                        {% if match_id == entry.match_id %}
+                        <tr>
+                            <!-- 
+                            Bij een form kun je zowel post als get gebruiken, bij a href kun je alleen get gebruiken en put/delete alleen via javascript 
+                            -->
+                            <form action="{{ url_for('update_item', match_id = entry.match_id) }}" method="POST">
+                            <td><input type="text" class="form-control form-control-sm" name="Player 1" placeholder="{{ entry.player_1 }}"></td> 
+                            <td><input type="text" class="form-control form-control-sm" name="Player 2" placeholder="{{ entry.player_2 }}"></td> 
+                            <td><input type="number" class="form-control form-control-sm" name="Score 1" placeholder="{{ entry.score_1 }}"></td> 
+                            <td><input type="number" class="form-control form-control-sm" name="Score 2" placeholder="{{ entry.score_2 }}"></td> 
+                            <td></td>
+                            <td>
+                                <button type="submit" class="btn btn-success btn-sm">Save</button>
+                                <a href="{{url_for('delete_item', match_id = entry.match_id) }}" class="btn btn-danger btn-sm" role="button" >Delete</a>
+                                <a href="/" class="btn btn-warning btn-sm" role="button">Cancel</a>
+                            </td>
+                            </form>
 
-                    </tr>
-                    {% else %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td>{{ entry.player_1 }}</td>
+                            <td>{{ entry.player_2 }}</td>
+                            <td>{{ entry.score_1 }}</td>
+                            <td>{{ entry.score_2 }}</td>
+                            <td> {{ entry.date }} </td>
+                            <td>
+                                <a class="btn btn-info btn-sm" href="{{ invullen(entry.match_id) }}" role="button">Edit</a>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+
+
+                {% else %}
+                    {% for entry in match_history_table %}
                     <tr>
                         <td>{{ entry.player_1 }}</td>
                         <td>{{ entry.player_2 }}</td>
                         <td>{{ entry.score_1 }}</td>
                         <td>{{ entry.score_2 }}</td>
                         <td> {{ entry.date }} </td>
-                        <td>
-                            <a class="btn btn-info btn-sm" href="{{ invullen(entry.match_id) }}" role="button">Edit</a>
-                        </td>
                     </tr>
-                    {% endif %}
-                {% endfor %}
+                    {% endfor %}
+                {% endif %}
             
             </tbody> 
         </table>

@@ -2,6 +2,7 @@ import os
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from datetime import datetime
 from sqlalchemy import and_, or_
 import module 
@@ -10,6 +11,8 @@ import pandas as pd
 import plotly.graph_objs as go
 import plotly.io as pio
 import json
+from flask_bcrypt import Bcrypt 
+
 
 # Hier wordt een flask object gemaakt met de naam 'app'
 app = Flask(__name__)
@@ -31,9 +34,22 @@ if not os.path.exists(db_dir):
 # dialect+driver://username:password@host:port/database.
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(db_dir, "match_history.db")}'
 
+# Enter a secret key which can be any random string of characters, and is necessary as Flask-Login requires it to sign session cookies for protection again data tampering.
+app.config["SECRET_KEY"] = "abc"
+
 # Hier wordt de app verteld dat het niet aanpassingen moet loggen in een apart bestand
 # Dat zorgt namelijk voor overhead
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# LoginManager is needed for our application 
+# to be able to log in and out users
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# Make bycrypt object to be able to hash passwords
+bcrypt = Bcrypt(app) 
+
 
 # Maakt integratie tussen SQLAlchemy en de app zodat je met python syntax interactie kan hebben met de app
 # In simple terms, sqlalchemy() is a Python library that allows you to interact with your application’s 
@@ -43,6 +59,10 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # without having to write SQL code.
 db = SQLAlchemy(app)
 
+#################################
+## Databases 
+################################
+
 # Dit is een tabel in SQLite 
 class MatchHistory(db.Model):
     match_id = db.Column(db.Integer, primary_key=True)
@@ -51,19 +71,33 @@ class MatchHistory(db.Model):
     score_1 = db.Column(db.Integer, nullable=False)
     score_2 = db.Column(db.Integer, nullable=False)
     date = db.Column(db.DateTime, nullable=False)
-    rating_p1 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
-    rating_p2 = db.Column(db.Integer, nullable=True) # TODO hernoemen naar rating
+    rating_p1 = db.Column(db.Integer, nullable=True)
+    rating_p2 = db.Column(db.Integer, nullable=True) 
     
-class Players(db.Model):
-    user_id = db.Column(db.String(80), primary_key=True)
-    rating = db.Column(db.Integer, nullable=False)
+
+class Users(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(250), unique=True, nullable=False)
+    username = db.Column(db.String(250), unique=True, nullable=False)
+    password = db.Column(db.String(250), nullable=False)
 
 # Create the database and tables within the application context
 with app.app_context():
     db.create_all()
+
+######################################
+## Functions
+######################################
+
+@login_manager.user_loader
+def loader_user(user_id):
+	return Users.query.get(user_id)
     
 def user_id_exists(user_id):
-    return bool(db.session.query(Players.query.filter_by(user_id=user_id).exists()).scalar())
+    return bool(db.session.query(Users.query.filter_by(user_id=user_id).exists()).scalar())
+
+def email_exists(email):
+    return bool(db.session.query(Users.query.filter_by(email=email).exists()).scalar())
 
 # De route decorator wordt gebruikt om Flask te vertellen welke URL de functie zou moeten triggeren
 # HTML content in de string wordt gerenderd
@@ -77,13 +111,65 @@ def invullen(regelid):
         return re.sub(r'edit=[0-9]+', 'edit=' + str(regelid), request.url)
     else:
         return f'{request.url}&edit={regelid}'
+    
+
+###################################
+## Routes
+###################################
+
+@app.route('/register', methods=["GET", "POST"])
+def register():
+    if request.method == 'POST':
+        new_user = Users(username=request.form.get("username"),
+                     email=request.form.get("email"),
+                password=bcrypt.generate_password_hash(request.form.get("password")).decode('utf-8'))
+        
+        db.session.add(new_user)
+        db.session.commit()
+        return redirect(url_for("login"))
+    
+    return render_template("sign_up.html")
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    # If a post request was made, find the user by 
+    # filtering for the email
+    
+    if request.method == "POST":
+        
+        if email_exists(request.form.get("email")) == True:
+            user = Users.query.filter_by(
+                email=request.form.get("email")).first()
+
+            # Check if the password entered is the 
+            # same as the user's password
+            if bcrypt.check_password_hash(user.password, request.form.get("password")):
+                login_user(user)
+                return redirect(url_for("index"))
+            
+            else:
+                return 'password was incorrect'
+        
+        else:
+            # TODO bericht toevoegen dat email niet bestaat
+            return 'email not found'
+    return render_template("login.html")
+
+@app.route("/logout")
+def logout():
+	logout_user()
+	return redirect(url_for("login"))
+
 
 @app.route('/', methods=['GET'])
+@login_required
 def index():
     """
     Hiermee wordt de hoofdpagina geladen.
     Telkens als de hoofdpagina geladen wordt, worden de ratings opnieuw opgehaald.
     """
+    
+    print(current_user.email)
  
     # Hier wordt de tabel met ratings opgehaald
     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
