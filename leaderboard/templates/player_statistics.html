@@ -25,6 +25,10 @@
                     <li class="nav-item">
                         <a class="nav-link active" aria-current="page" href="/player_statistics">Player statistics</a>
                     </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/logout">Logout</a>
+                    </li> 
                 </ul>
             </div>
         </div>
@@ -37,7 +41,27 @@
                 <div class="row g-2">
     
                     <div class="col-md-2">
-                        <input type="text" class="form-control form-control-sm" name="player" placeholder="Player">
+                        <!-- Drowpdown menu voor het selecteren van een speler -->
+                        <div class="form-group">
+                            <form>
+                                <select class="form-select"  id="statistics_player_filter" name="player" required>
+                                    <option value="" disabled selected></option>
+                                    {% for user in users %}
+                                        <option value="{{user}}">{{user}}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </div>
+                        
+                        <!-- Initialize Select2 -->
+                        <script>
+                            $(document).ready(function() {
+                                $('#statistics_player_filter').select2({
+                                    placeholder: "Player",
+                                    allowClear: true
+                                });
+                            });
+                        </script>
                     </div>
     
                     <div class="col-md-auto">

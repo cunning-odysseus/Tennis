@@ -168,14 +168,15 @@ def index():
     Hiermee wordt de hoofdpagina geladen.
     Telkens als de hoofdpagina geladen wordt, worden de ratings opnieuw opgehaald.
     """
-    
-    print(current_user.email)
  
     # Hier wordt de tabel met ratings opgehaald
     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
     match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
+    users = pd.read_sql_query("SELECT username FROM users", conn) # Ophalen van usernames voor de dropdown list
     conn.close() # Verbinding sluiten
     
+    users = users['username'].to_list()
+
     # Ophalne van de meest recente player ratings
     player_rating = module.most_recent_rating(match_history)
     
@@ -199,7 +200,6 @@ def index():
         
     elif 'date' in request.args.keys() and bool(request.args['date']):
         date_search = request.args['date']
-        print(type(date_search))
         match_history_table = MatchHistory.query.filter(MatchHistory.date.like(f'{date_search}%')) 
     
     else:      
@@ -217,18 +217,21 @@ def index():
     # maar dan wordt dat hier als bepalende factor voor de pagina layout gebruikt. (of invulvelden worden geladen met save en annuleren knoppen)
     if 'edit' in request.args.keys():
         match_id = int(request.args['edit'])
-        return render_template('home.html', match_history_table=match_history_table, match_id=match_id, Player_rating=player_rating, invullen=invullen)
+        return render_template('home.html', match_history_table=match_history_table, match_id=match_id, Player_rating=player_rating, invullen=invullen, users=users)
     
-    return render_template('home.html', match_history_table=match_history_table, Player_rating=player_rating, invullen=invullen)
+    return render_template('home.html', match_history_table=match_history_table, Player_rating=player_rating, invullen=invullen, users=users)
 
 @app.route('/player_statistics', methods=['GET'])
+@login_required
 def index_player_stats():
     
     # Hier wordt de tabel met ratings opgehaald
     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
     match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
+    users = pd.read_sql_query("SELECT username FROM users", conn) # Ophalen van usernames voor de dropdown list
     conn.close() # Verbinding sluiten
-
+        
+    users = users['username'].to_list()
     stats = module.player_statistics(match_history)
     rating_progression = module.player_rating_progression(match_history)
     
@@ -261,18 +264,19 @@ def index_player_stats():
     graphJSON = pio.to_json(fig)
 
     # Pass the JSON data to the template
-    return render_template('player_statistics.html', graphJSON=graphJSON, stats=stats)
+    return render_template('player_statistics.html', graphJSON=graphJSON, stats=stats, users=users)
 
 
 # Deze URL kan je niet bezoeken, maar dient alleen om iets in te voeren vandaar de methode POST
 @app.route('/add', methods=['POST'])
+@login_required
 def add_match():
     """ 
     Dit is de pagina waarin een post verstuurd wordt naar de server met de wedstrijd input.
     Na het binnenkrijgen van de wedstrijdgegevens wordt hier aan de backend ook een nieuwe berekening gemaakt van de ratings.
     """
     # Hier wordt de informatie opgehaald uit de velden
-    player_1 = request.form.get('player_1')
+    player_1 = current_user.username
     player_2 = request.form.get('player_2')
     score_1 = int(request.form.get('score_1'))
     score_2 = int(request.form.get('score_2'))
@@ -286,10 +290,16 @@ def add_match():
         return 'Score mag niet gelijk zijn'
     else:
         pass
-
+    
     # Controle op naam
-    if player_1 or player_2 == None:
-        print('Spelersnaam mag niet leeg zijn')
+    if player_1 == player_2:
+        return 'Spelersnamen mogen niet hetzelfde zijn'
+    else:
+        pass
+    
+    # Controle op verschil score
+    if abs(score_1 - score_2) < 2:
+        return 'Scoreverschil moet 2 of groter zijn'
     else:
         pass
     
@@ -363,6 +373,7 @@ def add_match():
 
 
 @app.route('/update/<int:match_id>', methods=['POST'])
+@login_required
 def update_item(match_id):
     """
     Deze pagina wordt gebruikt voor het aanpassen van een bestaande uitslag. 
@@ -455,6 +466,7 @@ def update_item(match_id):
     return redirect(url_for('index'))
 
 @app.route('/delete/<int:match_id>', methods=['GET'])
+@login_required
 def delete_item(match_id):
     
     # Ophalen van wedstrijd die aangepast moet worden adhv match id
