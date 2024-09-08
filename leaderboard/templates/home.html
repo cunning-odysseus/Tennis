@@ -107,7 +107,7 @@
                     <!-- Drowpdown menu voor het selecteren van een speler -->
                     <div class="form-group">
                         <form>
-                            <select class="form-select"  id="match_history_player_filter" name="player" required>
+                            <select class="form-select"  id="match_history_player_filter" name="player" >
                                 <option value="" disabled selected></option>
                                 {% for user in users %}
                                     <option value="{{user}}">{{user}}</option>
@@ -157,7 +157,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% if current_user.email == 'caiovanbeek@hotmail.com' %}
+                {% if current_user.email == 'caiovanbeek@outlook.com' %}
                     {% for entry in match_history_table %}
                         {% if match_id == entry.match_id %}
                         <tr>

@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from datetime import datetime
@@ -12,6 +12,9 @@ import plotly.graph_objs as go
 import plotly.io as pio
 import json
 from flask_bcrypt import Bcrypt 
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+import settings
 
 
 # Hier wordt een flask object gemaakt met de naam 'app'
@@ -35,11 +38,25 @@ if not os.path.exists(db_dir):
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(db_dir, "match_history.db")}'
 
 # Enter a secret key which can be any random string of characters, and is necessary as Flask-Login requires it to sign session cookies for protection again data tampering.
-app.config["SECRET_KEY"] = "abc"
+app.config["SECRET_KEY"] = "k@J!y`0XIvwZ"
 
 # Hier wordt de app verteld dat het niet aanpassingen moet loggen in een apart bestand
 # Dat zorgt namelijk voor overhead
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+mail = Mail(app)
+
+# Flask-Mail setup
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # standard protocol for transmitting email over a network
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = settings.emailadress  
+app.config['MAIL_PASSWORD'] = settings.app_password 
+
+mail = Mail(app)
+
+# Itsdangerous serializer for generating tokens
+s = URLSafeTimedSerializer(app.secret_key)
 
 # LoginManager is needed for our application 
 # to be able to log in and out users
@@ -159,6 +176,67 @@ def login():
 def logout():
 	logout_user()
 	return redirect(url_for("login"))
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    
+    # Gebruikers ophalen
+    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
+    users = pd.read_sql_query("SELECT * FROM users", conn)
+    conn.close() # Verbinding sluiten
+    
+    if request.method=='POST':      
+        email = request.form.get('email')
+        if email in users['email'].to_list():
+            token = s.dumps(email, salt='password-reset-salt')  # Generate a token
+            reset_link = url_for('reset_password', token=token, _external=True)
+            
+            # Send email
+            msg = Message('Password Reset Request', sender=settings.emailadress, recipients=[email])
+            msg.body = f'Please use the following link to reset your password: {reset_link}'
+            mail.send(msg)
+            
+            flash('A password reset link has been sent to your email.')
+            return render_template('login.html')
+            
+        else:
+            return 'Email address not found. Please try again.'
+    
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    # Gebruikers ophalen
+    # Gebruikers ophalen
+    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
+    users = pd.read_sql_query("SELECT * FROM users", conn) 
+    conn.close() # Verbinding sluiten
+    
+    try:
+        email = s.loads(token, salt='password-reset-salt', max_age=3600)  # Valid for 1 hour
+    except SignatureExpired:
+        return 'The password reset link has expired.'
+    except BadSignature:
+        return 'Invalid password reset link.'
+    
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        # Hash the password for security
+        hashed_password = bcrypt.hashpw(new_password, bcrypt.gensalt())
+
+    # Find the user and update their password
+    if email in users['email'].to_list():
+        users.loc[users['email'] == email, users['password']] = hashed_password
+        flash('Your password has been reset successfully.')
+        
+        
+        # Hier wordt de nieuwe versie weggeschreven naar de database
+        conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+        users.to_sql('users', conn, if_exists='replace', index=False)
+        conn.close()
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html')
 
 
 @app.route('/', methods=['GET'])
@@ -492,7 +570,7 @@ def delete_item(match_id):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)
     
     
     
