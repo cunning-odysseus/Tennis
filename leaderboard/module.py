@@ -108,11 +108,10 @@ def player_statistics(match_history):
                     pass
                 
             if player_name in row['player_1']:
-                if row['result_p2'] == 0:
+                if row['result_p1'] == 0:
                     losses.append(row['result_p1'])
                 else:
                     pass
-
                 
             if player_name in row['player_2']:
                 if row['result_p2'] == 0:
@@ -175,7 +174,6 @@ def player_rating_progression(match_history):
 
     rating_history_df = pd.DataFrame(rating_history).sort_values('Date').reset_index()
         
-    print(rating_history_df)
     return rating_history_df
 
 def plot_rating_progression(match_history, player):

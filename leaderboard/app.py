@@ -16,6 +16,7 @@ import smtplib
 from email.mime.text import MIMEText
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 import settings
+from the_big_username_blacklist import get_blacklist
 
 
 # Hier wordt een flask object gemaakt met de naam 'app'
@@ -129,6 +130,18 @@ def send_email(subject, body, sender, recipients, password):
        smtp_server.sendmail(sender, recipients, msg.as_string())
     print("Message sent!")
     
+def is_blacklisted(username):
+    # Define the blacklist
+    
+    blacklist = set(get_blacklist() + settings.blacklist)
+                    
+
+    # Check if any blacklisted term is a substring in the username
+    for word in blacklist:
+        if word.lower() in username.lower():
+            return True
+    return False
+    
 
 ###################################
 ## Routes
@@ -142,13 +155,18 @@ def register():
         username = request.form.get("username")
         
         if re.fullmatch(pattern, username):
-            new_user = Users(username=request.form.get("username"),
-                    email=request.form.get("email"),
-                    password=bcrypt.generate_password_hash(request.form.get("password")).decode('utf-8'))
-        
-            db.session.add(new_user)
-            db.session.commit()
-            return redirect(url_for("login"))
+            
+            if is_blacklisted(username):
+                return f"'{username}' is blacklisted."
+            
+            else:
+                new_user = Users(username=request.form.get("username"),
+                        email=request.form.get("email"),
+                        password=bcrypt.generate_password_hash(request.form.get("password")).decode('utf-8'))
+                
+                db.session.add(new_user)
+                db.session.commit()
+                return redirect(url_for("login"))
 
         else:
             return 'Username not valid'
@@ -165,18 +183,18 @@ def login():
         if email_exists(request.form.get("email")) == True:
             user = Users.query.filter_by(
                 email=request.form.get("email")).first()
-
-            # Check if the password entered is the 
-            # same as the user's password
-            if bcrypt.check_password_hash(user.password, request.form.get("password")):
-                login_user(user)
-                return redirect(url_for("index"))
+            
+            if bool(user):
+                # Check if the password entered is the 
+                # same as the user's password
+                if bcrypt.check_password_hash(user.password, request.form.get("password")):
+                    login_user(user)
+                    return redirect(url_for("index"))
             
             else:
                 return 'password was incorrect'
         
         else:
-            # TODO bericht toevoegen dat email niet bestaat
             return 'email not found'
     return render_template("login.html")
 
