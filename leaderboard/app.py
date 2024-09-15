@@ -136,14 +136,22 @@ def send_email(subject, body, sender, recipients, password):
 
 @app.route('/register', methods=["GET", "POST"])
 def register():
+    pattern = r'^[a-zA-Z0-9]([._-]?[a-zA-Z0-9]+)*$'
+    
     if request.method == 'POST':
-        new_user = Users(username=request.form.get("username"),
-                     email=request.form.get("email"),
-                password=bcrypt.generate_password_hash(request.form.get("password")).decode('utf-8'))
+        username = request.form.get("username")
         
-        db.session.add(new_user)
-        db.session.commit()
-        return redirect(url_for("login"))
+        if re.fullmatch(pattern, username):
+            new_user = Users(username=request.form.get("username"),
+                    email=request.form.get("email"),
+                    password=bcrypt.generate_password_hash(request.form.get("password")).decode('utf-8'))
+        
+            db.session.add(new_user)
+            db.session.commit()
+            return redirect(url_for("login"))
+
+        else:
+            return 'Username not valid'
     
     return render_template("sign_up.html")
 
