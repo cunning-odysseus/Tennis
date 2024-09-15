@@ -52,7 +52,7 @@
 
                 <div class="row g-2">
                 
-                    <div class="col-md-2">
+                    <div class="col-md-auto">
                         <!-- Drowpdown menu voor het selecteren van een speler -->
                         <div class="form-group">
                             <form>
@@ -70,14 +70,16 @@
                             $(document).ready(function() {
                                 $('#players').select2({
                                     placeholder: "Your opponent",
-                                    allowClear: true
+                                    allowClear: true,
+                                    widt: "100%"
+
                                 });
                             });
                         </script>
                     </div>
 
     
-                    <div class="col-md-2">
+                    <div class="col-md-auto">
                         <input type="number" class="form-control form-control-sm" name="score_1" placeholder="Score 1" required>
                     </div>
     

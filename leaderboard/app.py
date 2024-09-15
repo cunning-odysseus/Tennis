@@ -12,7 +12,8 @@ import plotly.graph_objs as go
 import plotly.io as pio
 import json
 from flask_bcrypt import Bcrypt 
-from flask_mail import Mail, Message
+import smtplib
+from email.mime.text import MIMEText
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 import settings
 
@@ -43,17 +44,6 @@ app.config["SECRET_KEY"] = "k@J!y`0XIvwZ"
 # Hier wordt de app verteld dat het niet aanpassingen moet loggen in een apart bestand
 # Dat zorgt namelijk voor overhead
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-mail = Mail(app)
-
-# Flask-Mail setup
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # standard protocol for transmitting email over a network
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = settings.emailadress  
-app.config['MAIL_PASSWORD'] = settings.app_password 
-
-mail = Mail(app)
 
 # Itsdangerous serializer for generating tokens
 s = URLSafeTimedSerializer(app.secret_key)
@@ -129,6 +119,16 @@ def invullen(regelid):
     else:
         return f'{request.url}&edit={regelid}'
     
+def send_email(subject, body, sender, recipients, password):
+    msg = MIMEText(body)
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = ', '.join(recipients)
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp_server:
+       smtp_server.login(sender, password)
+       smtp_server.sendmail(sender, recipients, msg.as_string())
+    print("Message sent!")
+    
 
 ###################################
 ## Routes
@@ -192,10 +192,9 @@ def forgot_password():
             reset_link = url_for('reset_password', token=token, _external=True)
             
             # Send email
-            msg = Message('Password Reset Request', sender=settings.emailadress, recipients=[email])
-            msg.body = f'Please use the following link to reset your password: {reset_link}'
-            mail.send(msg)
-            
+            body = f'Here is the reset link {reset_link}'
+            send_email(settings.subject, body, settings.sender, email, settings.password)
+
             flash('A password reset link has been sent to your email.')
             return render_template('login.html')
             
@@ -204,9 +203,12 @@ def forgot_password():
     
     return render_template('forgot_password.html')
 
+
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    # Gebruikers ophalen
+    # Database pad
+    db_path = '/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db'
+    
     # Gebruikers ophalen
     conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
     users = pd.read_sql_query("SELECT * FROM users", conn) 
@@ -221,22 +223,26 @@ def reset_password(token):
     
     if request.method == 'POST':
         new_password = request.form.get('new_password')
+        
         # Hash the password for security
-        hashed_password = bcrypt.hashpw(new_password, bcrypt.gensalt())
+        hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
 
-    # Find the user and update their password
-    if email in users['email'].to_list():
-        users.loc[users['email'] == email, users['password']] = hashed_password
-        flash('Your password has been reset successfully.')
+        # Find the user and update their password
+        if email in users['email'].to_list():
+            users.loc[users['email'] == email, 'password'] = hashed_password  # Update the password
+            flash('Your password has been reset successfully.')
         
+            # Write the updated users DataFrame back to the database
+            with sqlite3.connect(db_path) as conn:
+                users.to_sql('users', conn, if_exists='replace', index=False)  # Save changes
+                conn.commit()
+            
+            return redirect(url_for("login"))
         
-        # Hier wordt de nieuwe versie weggeschreven naar de database
-        conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
-        users.to_sql('users', conn, if_exists='replace', index=False)
-        conn.close()
-        return redirect(url_for('login'))
+        else:
+            print('No user found, updating password was unsuccessful')
 
-    return render_template('reset_password.html')
+    return render_template('reset_password.html', token=token)
 
 
 @app.route('/', methods=['GET'])
