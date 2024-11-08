@@ -1,3 +1,5 @@
+# TODO: rating progression ook opslaan als db?
+
 import os
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -5,19 +7,18 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from datetime import datetime
 from sqlalchemy import and_, or_
-import module 
+import rating_module as rating_module 
 import re
 import pandas as pd
 import plotly.graph_objs as go
 import plotly.io as pio
-import json
 from flask_bcrypt import Bcrypt 
 import smtplib
 from email.mime.text import MIMEText
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 import settings
 from the_big_username_blacklist import get_blacklist
-
+from sqlalchemy.orm import Session
 
 # Hier wordt een flask object gemaakt met de naam 'app'
 app = Flask(__name__)
@@ -40,7 +41,7 @@ if not os.path.exists(db_dir):
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(db_dir, "match_history.db")}'
 
 # Enter a secret key which can be any random string of characters, and is necessary as Flask-Login requires it to sign session cookies for protection again data tampering.
-app.config["SECRET_KEY"] = "k@J!y`0XIvwZ"
+app.config["SECRET_KEY"] = settings.secret_key
 
 # Hier wordt de app verteld dat het niet aanpassingen moet loggen in een apart bestand
 # Dat zorgt namelijk voor overhead
@@ -99,7 +100,7 @@ with app.app_context():
 
 @login_manager.user_loader
 def loader_user(user_id):
-	return Users.query.get(user_id)
+	return db.session.get(Users, user_id) 
     
 def user_id_exists(user_id):
     return bool(db.session.query(Users.query.filter_by(user_id=user_id).exists()).scalar())
@@ -216,8 +217,17 @@ def forgot_password():
             reset_link = url_for('reset_password', token=token, _external=True)
             
             # Send email
-            body = f'Here is the reset link {reset_link}'
-            send_email(settings.subject, body, settings.sender, email, settings.password)
+            body = f"""
+                    Hello,
+
+                    Here is the reset link for your password:
+                    {reset_link}
+
+                    Kind regards,  
+                    Caio from the Tabletennis webapp 
+                    """
+                    
+            send_email(settings.subject, body, settings.sender, [email], settings.password)
 
             flash('A password reset link has been sent to your email.')
             return render_template('login.html')
@@ -285,8 +295,8 @@ def index():
     
     users = users['username'].to_list()
 
-    # Ophalne van de meest recente player ratings
-    player_rating = module.most_recent_rating(match_history)
+    # Ophalen van de meest recente player ratings
+    player_rating = rating_module.most_recent_rating(match_history)
     
     # De volgende if / else zijn er om de filter op de tabel te handelen
     
@@ -340,8 +350,8 @@ def index_player_stats():
     conn.close() # Verbinding sluiten
         
     users = users['username'].to_list()
-    stats = module.player_statistics(match_history)
-    rating_progression = module.player_rating_progression(match_history)
+    stats = rating_module.player_statistics(match_history)
+    rating_progression = rating_module.player_rating_progression(match_history)
     
     if 'player' in request.args.keys() and bool(request.args['player']):
         player_name = request.args['player']
@@ -440,39 +450,9 @@ def add_match():
     # Hier wordt de nieuwe rij aan de huidige wedstrijdgeschiedenis toegevoegd
     match_history = pd.concat([match_history, new_row], ignore_index=True).sort_values('date', ascending=True)
 
-    # De functie determine result op elke rij toepassen zodat we weten welke speler gewonnen heeft
-    # 1 is winst en 0 is verlies -> dit wordt weer gebruikt om te berekenen wat de rating van die speler wordt
-    match_history['result_p1'] = match_history.apply(lambda row: module.determine_result(row, player=1), axis=1)
-    match_history['result_p2'] = match_history.apply(lambda row: module.determine_result(row, player=2), axis=1)
+    # Ratings verversen
+    match_history = rating_module.calculate_ratings(match_history)
     
-    # Hier wordt een dictionary gemaakt waarbij alle spelers een startrating krijgen van 400.
-    current_rating = {}
-    for name in (set(list(match_history['player_1']) + list(match_history['player_2']))):
-        current_rating[name] = 400
-
-        
-    # Hier wordt voor iedere rij voor beide spelers hun rating berekend en toegevoegd aan de df
-    for index, row in match_history.iterrows(): # Loop voor elke rij (wedstrijd)
-        p1 = row['player_1'] # Ophalen van de naam van speler 1 
-        p2 = row['player_2'] # Ophalen van de naam van speler 2
-        current_rating_p1 = current_rating[p1] # Huidige rating uit de dictionary ophalen voor speler 1
-        current_rating_p2 = current_rating[p2] # Huidige rating uit de dictionary ophalen voor speler 2
-
-    
-        # Functie toepassen op de rij om de ratings te berekenen. Deze functie geeft een dictionary terug met:
-        # probability_win_p1, probability_win_p2, new_rating_player_1, new_rating_player_2 en date
-        table = module.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
-        
-        # # De nieuwe ratings van beide spelers in de dictionary 'current_rating' updaten.
-        current_rating[p1] = table[f'new_rating_{p1}']
-        current_rating[p2] = table[f'new_rating_{p2}']
-        
-        # De nieuwe ratings van beide spelers toevoegen aan de wedstrijd gegevens
-        match_history.iloc[(index), 6] = current_rating[p1]
-        match_history.iloc[(index), 7] = current_rating[p2]
-    
-    match_history = match_history.drop(columns=['result_p1', 'result_p2']) # Hier worden de kolommen waarin de 1 of 0 staat voor winst/verlies verwijderd 
-
     # Hier wordt de nieuwe versie weggeschreven naar de database
     conn = sqlite3.connect(settings.db_path)
     match_history.to_sql('match_history', conn, if_exists='replace', index=False)
@@ -514,10 +494,9 @@ def update_item(match_id):
 
     if bool(request.form.get('score_2')) == True:
         score_2 = int(request.form.get('score_2'))
-        print(score_2)
+
     else:
         score_2 = int(match_to_update.score_2)
-        print('Niet de juiste score')
     
     # Controlle of de scores niet gelijk zijn.
     if score_1 == score_2:
@@ -532,39 +511,10 @@ def update_item(match_id):
     
     id = match_to_update['match_id'][0]
     match_history.loc[match_history['match_id'] == id] = match_to_update.iloc[0].values
-    print(match_history)
 
-    # De functie determine result op elke rij toepassen zodat we weten welke speler gewonnen heeft
-    # 1 is winst en 0 is verlies -> dit wordt weer gebruikt om te berekenen wat de rating van die speler wordt
-    match_history['result_p1'] = match_history.apply(lambda row: module.determine_result(row, player=1), axis=1)
-    match_history['result_p2'] = match_history.apply(lambda row: module.determine_result(row, player=2), axis=1)
-    
-    # Hier wordt een dictionary gemaakt waarbij alle spelers een startrating krijgen van 400.
-    current_rating = {}
-    for name in (set(list(match_history['player_1']) + list(match_history['player_2']))):
-        current_rating[name] = 400
+    # Ratings verversen
+    match_history = rating_module.calculate_ratings(match_history)
 
-    # Hier wordt voor iedere rij voor beide spelers hun rating berekend en toegevoegd aan de df
-    for index, row in match_history.iterrows(): # Loop voor elke rij (wedstrijd)
-        p1 = row['player_1'] # Ophalen van de naam van speler 1 
-        p2 = row['player_2'] # Ophalen van de naam van speler 2
-        current_rating_p1 = current_rating[p1] # Huidige rating uit de dictionary ophalen voor speler 1
-        current_rating_p2 = current_rating[p2] # Huidige rating uit de dictionary ophalen voor speler 2   
-        
-        # Functie toepassen op de rij om de ratings te berekenen. Deze functie geeft een dictionary terug met:
-        # probability_win_p1, probability_win_p2, new_rating_player_1, new_rating_player_2 en date
-        table = module.update_rating(row['player_1'], row['player_2'], row['result_p1'], row['result_p2'], row['date'], current_rating_p1= current_rating_p1, current_rating_p2=current_rating_p2)
-        
-        # De nieuwe ratings van beide spelers in de dictionary 'current_rating' updaten.
-        current_rating[p1] = table[f'new_rating_{p1}']
-        current_rating[p2] = table[f'new_rating_{p2}']
-        
-        # De nieuwe ratings van beide spelers toevoegen aan de wedstrijd gegevens
-        match_history.iloc[(index), 6] = current_rating[p1]
-        match_history.iloc[(index), 7] = current_rating[p2]
- 
-    match_history = match_history.drop(columns=['result_p1', 'result_p2']) # Hier worden de kolommen waarin de 1 of 0 staat voor winst/verlies verwijderd 
-    
     # Dit is ter zekerheid dat de bestandstypes goed zijn
     match_history['score_1'] = match_history['score_1'].astype(int)
     match_history['score_2'] = match_history['score_2'].astype(int)
@@ -595,30 +545,16 @@ def delete_item(match_id):
     nieuwe_ids = list(range(1,len(match_history['match_id']) + 1))
     match_history['match_id'] = nieuwe_ids
     
+    # Ratings verversen
+    match_history = rating_module.calculate_ratings(match_history)
+
     # Hier wordt de nieuwe versie weggeschreven naar de database
     conn = sqlite3.connect(settings.db_path)
     match_history.to_sql('match_history', conn, if_exists='replace', index=False)
     conn.close()
 
     return redirect(url_for('index'))
-    #     # Using a context manager for the database connection
-    # with sqlite3.connect(settings.db_path) as conn:
-    #     # Delete the match directly in the database
-    #     conn.execute("DELETE FROM match_history WHERE match_id = ?", (match_id,))
-        
-    #     # Reset the match_id column so that IDs are sequential
-    #     conn.execute("""
-    #         UPDATE match_history
-    #         SET match_id = (SELECT ROW_NUMBER() OVER () FROM match_history)
-    #     """)
-    #     conn.commit()
-
-    # # Redirect to the index page
-    # return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
-    
-    
-    
     

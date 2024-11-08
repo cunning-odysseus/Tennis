@@ -1,16 +1,20 @@
-import sqlite3
-import csv
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
 def prob_win(current_rating_p1, current_rating_p2,):
+    """ 
+    Berekend de kans dat een speler wint van de ander.
+    Is onderdeel van update_rating
+    """
     prob_player_1_win = 1 / ( 1 + 10**((current_rating_p1 - current_rating_p2)/400))
     
     return prob_player_1_win
 
 def update_rating(p1, p2, result_p1, result_p2, date, current_rating_p1=400, current_rating_p2=400):
     """ 
+    Deze functie berekend de rating die een speler krijgt na de match afhangend van de rating die speler op dat moment heeft.
+    Is onderdeel van calculate_ratings
     score: 1 for win, 0 for loss and 1/2 for draw
     """
     result = {}
@@ -29,6 +33,10 @@ def update_rating(p1, p2, result_p1, result_p2, date, current_rating_p1=400, cur
     return result
 
 def determine_result(row, player):
+    """ 
+    Bepaald of een speler de wedstrijd gewonnen of verloren heeft.
+    Is onderdeel van calculate_ratings
+    """
     if player == 1:
         if row['score_1'] > row['score_2']:
             return 1
@@ -41,7 +49,46 @@ def determine_result(row, player):
         else:
             return 0
         
+def calculate_ratings(match_history):
+    """ Berekend de rating van alle spelers waarbij ook alle gespeelde wedstrijden meegenomen wordt """
+    
+    # kolommen toevoegen voor win/loss results voor elke speler
+    # De functie determine result op elke rij toepassen zodat we weten welke speler gewonnen heeft
+    # 1 is winst en 0 is verlies -> dit wordt weer gebruikt om te berekenen wat de rating van die speler wordt
+    match_history['result_p1'] = match_history.apply(lambda row: determine_result(row, player=1), axis=1)
+    match_history['result_p2'] = match_history.apply(lambda row: determine_result(row, player=2), axis=1)
+
+    # Hier wordt een dictionary gemaakt waarbij alle spelers een startrating krijgen van 400.
+    current_rating = {}
+    for name in (set(list(match_history['player_1']) + list(match_history['player_2']))):
+        current_rating[name] = 400
+
+    # Calculate and update ratings
+    for index, row in match_history.iterrows():
+        p1, p2 = row['player_1'], row['player_2'] # Ophalen van spelernaam
+        rating_p1, rating_p2 = current_rating[p1], current_rating[p2] # Huidige ratings ophalen
+
+        # Functie toepassen op de rij om de ratings te berekenen. Deze functie geeft een dictionary terug met:
+        # probability_win_p1, probability_win_p2, new_rating_player_1, new_rating_player_2 en date
+        updated = update_rating(
+            p1=p1, p2=p2,
+            result_p1=row['result_p1'], result_p2=row['result_p2'],
+            date=row['date'], current_rating_p1=rating_p1, current_rating_p2=rating_p2
+        )
+
+        # De nieuwe ratings van beide spelers in de dictionary 'current_rating' updaten.
+        current_rating[p1] = updated[f'new_rating_{p1}']
+        current_rating[p2] = updated[f'new_rating_{p2}']
+        
+        # De nieuwe ratings van beide spelers toevoegen aan de wedstrijd gegevens
+        match_history.at[index, 'rating_p1'] = current_rating[p1]
+        match_history.at[index, 'rating_p2'] = current_rating[p2]
+
+    return match_history.drop(columns=['result_p1', 'result_p2'])  # Hier worden de kolommen waarin de 1 of 0 staat voor winst/verlies verwijderd 
+
+        
 def most_recent_rating(match_history):
+    """ Deze functie haalt de meest recente rating op van een speler tbv de lijst op de home pagina """
     current_rating = {'Player': [],
                       'Rating': []}
     for name in (set(list(match_history['player_1']) + list(match_history['player_2']))):
@@ -65,6 +112,8 @@ def most_recent_rating(match_history):
     return current_rating_df
 
 def player_statistics(match_history):
+    """ Functie die speler statistieken maakt """
+    
     player_stats = {
         'Player': [],
         'Average score': [],
@@ -127,31 +176,10 @@ def player_statistics(match_history):
     player_stats_df = pd.DataFrame(player_stats).reset_index()
     
     return player_stats_df
-            
-# def player_rating_progression(match_history, player_name):
-#     rating_history = {
-#         'Player': [],
-#         'Rating': [],
-#         'Date': []
-#     }
-#     selection = match_history[(match_history['player_1'] == player_name) | (match_history['player_2'] == player_name)]
-    
-#     for index, row in selection.iterrows():
-#         if player_name in row['player_1']:
-#             rating_history['Rating'].append(row['rating_p1'])
-#             rating_history['Date'].append(row['date'])
-#             rating_history['Player'].append(player_name)
-            
-#         elif player_name in row['player_2']:
-#             rating_history['Rating'].append(row['rating_p2'])
-#             rating_history['Date'].append(row['date'])
-#             rating_history['Player'].append(player_name)
-
-#     rating_history_df = pd.DataFrame(rating_history).sort_values('Date').reset_index()
-    
-#     return rating_history_df
 
 def player_rating_progression(match_history):
+    """ Functie die de ratings van alle spelers ophaalt met de daarbij behorende datum tbv de grafiek op de statistieken pagina """
+
     rating_history = {
         'Player': [],
         'Rating': [],
@@ -177,11 +205,11 @@ def player_rating_progression(match_history):
     return rating_history_df
 
 def plot_rating_progression(match_history, player):
+    """ Functie die de een plot maakt voor een speler en die wegschrijft"""
     
     rating_progression = player_rating_progression(match_history, player)
     
     sns.lineplot(x=rating_progression['Date'], y=rating_progression['Rating'])
     plt.savefig('/Users/caioeduardo/Documents/python_project/Tennis/plots/graph.png')
     
-        
         
