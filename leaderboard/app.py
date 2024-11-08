@@ -132,10 +132,8 @@ def send_email(subject, body, sender, recipients, password):
     
 def is_blacklisted(username):
     # Define the blacklist
-    
     blacklist = set(get_blacklist() + settings.blacklist)
                     
-
     # Check if any blacklisted term is a substring in the username
     for word in blacklist:
         if word.lower() in username.lower():
@@ -207,7 +205,7 @@ def logout():
 def forgot_password():
     
     # Gebruikers ophalen
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
+    conn = sqlite3.connect(settings.db_path) # Verbinding maken met de database
     users = pd.read_sql_query("SELECT * FROM users", conn)
     conn.close() # Verbinding sluiten
     
@@ -233,10 +231,10 @@ def forgot_password():
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     # Database pad
-    db_path = '/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db'
+    db_path = settings.db_path
     
     # Gebruikers ophalen
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
+    conn = sqlite3.connect(settings.db_path) # Verbinding maken met de database
     users = pd.read_sql_query("SELECT * FROM users", conn) 
     conn.close() # Verbinding sluiten
     
@@ -280,7 +278,7 @@ def index():
     """
  
     # Hier wordt de tabel met ratings opgehaald
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
+    conn = sqlite3.connect(settings.db_path) # Verbinding maken met de database
     match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
     users = pd.read_sql_query("SELECT username FROM users", conn) # Ophalen van usernames voor de dropdown list
     conn.close() # Verbinding sluiten
@@ -336,7 +334,7 @@ def index():
 def index_player_stats():
     
     # Hier wordt de tabel met ratings opgehaald
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db') # Verbinding maken met de database
+    conn = sqlite3.connect(settings.db_path) # Verbinding maken met de database
     match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
     users = pd.read_sql_query("SELECT username FROM users", conn) # Ophalen van usernames voor de dropdown list
     conn.close() # Verbinding sluiten
@@ -415,7 +413,7 @@ def add_match():
     
     # Hier worden de ratings opnieuw berekend
     # Verbinden en ophalen van huidige database
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    conn = sqlite3.connect(settings.db_path)
     match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
     conn.close()
     
@@ -476,7 +474,7 @@ def add_match():
     match_history = match_history.drop(columns=['result_p1', 'result_p2']) # Hier worden de kolommen waarin de 1 of 0 staat voor winst/verlies verwijderd 
 
     # Hier wordt de nieuwe versie weggeschreven naar de database
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    conn = sqlite3.connect(settings.db_path)
     match_history.to_sql('match_history', conn, if_exists='replace', index=False)
     conn.close()
     return redirect(url_for('index'))
@@ -492,7 +490,7 @@ def update_item(match_id):
     """
     # Ophalen van wedstrijd die aangepast moet worden adhv match id
     # match_to_update = MatchHistory.query.get(match_id)
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    conn = sqlite3.connect(settings.db_path)
     match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
     match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
     conn.close()
@@ -516,8 +514,10 @@ def update_item(match_id):
 
     if bool(request.form.get('score_2')) == True:
         score_2 = int(request.form.get('score_2'))
+        print(score_2)
     else:
         score_2 = int(match_to_update.score_2)
+        print('Niet de juiste score')
     
     # Controlle of de scores niet gelijk zijn.
     if score_1 == score_2:
@@ -532,6 +532,7 @@ def update_item(match_id):
     
     id = match_to_update['match_id'][0]
     match_history.loc[match_history['match_id'] == id] = match_to_update.iloc[0].values
+    print(match_history)
 
     # De functie determine result op elke rij toepassen zodat we weten welke speler gewonnen heeft
     # 1 is winst en 0 is verlies -> dit wordt weer gebruikt om te berekenen wat de rating van die speler wordt
@@ -569,7 +570,7 @@ def update_item(match_id):
     match_history['score_2'] = match_history['score_2'].astype(int)
 
     # Hier wordt de nieuwe versie weggeschreven naar de database
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    conn = sqlite3.connect(settings.db_path)
     match_history.to_sql('match_history', conn, if_exists='replace', index=False)
     conn.close()
     
@@ -581,7 +582,7 @@ def delete_item(match_id):
     
     # Ophalen van wedstrijd die aangepast moet worden adhv match id
     # match_to_update = MatchHistory.query.get(match_id)
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    conn = sqlite3.connect(settings.db_path)
     match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
     match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
     conn.close()
@@ -595,11 +596,25 @@ def delete_item(match_id):
     match_history['match_id'] = nieuwe_ids
     
     # Hier wordt de nieuwe versie weggeschreven naar de database
-    conn = sqlite3.connect('/Users/caioeduardo/Documents/python_project/Tennis/leaderboard/data/match_history.db')
+    conn = sqlite3.connect(settings.db_path)
     match_history.to_sql('match_history', conn, if_exists='replace', index=False)
     conn.close()
 
     return redirect(url_for('index'))
+    #     # Using a context manager for the database connection
+    # with sqlite3.connect(settings.db_path) as conn:
+    #     # Delete the match directly in the database
+    #     conn.execute("DELETE FROM match_history WHERE match_id = ?", (match_id,))
+        
+    #     # Reset the match_id column so that IDs are sequential
+    #     conn.execute("""
+    #         UPDATE match_history
+    #         SET match_id = (SELECT ROW_NUMBER() OVER () FROM match_history)
+    #     """)
+    #     conn.commit()
+
+    # # Redirect to the index page
+    # return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

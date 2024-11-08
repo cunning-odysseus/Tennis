@@ -23,6 +23,7 @@
     <!-- Favicon -->
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}"> 
     <title>Table Tennis Leaderboard</title>
+
 </head>
 
 <body>
@@ -174,10 +175,10 @@
                             Bij een form kun je zowel post als get gebruiken, bij a href kun je alleen get gebruiken en put/delete alleen via javascript 
                             -->
                             <form action="{{ url_for('update_item', match_id = entry.match_id) }}" method="POST">
-                            <td><input type="text" class="form-control form-control-sm" name="Player 1" placeholder="{{ entry.player_1 }}"></td> 
-                            <td><input type="text" class="form-control form-control-sm" name="Player 2" placeholder="{{ entry.player_2 }}"></td> 
-                            <td><input type="number" class="form-control form-control-sm" name="Score 1" placeholder="{{ entry.score_1 }}"></td> 
-                            <td><input type="number" class="form-control form-control-sm" name="Score 2" placeholder="{{ entry.score_2 }}"></td> 
+                            <td><input type="text" class="form-control form-control-sm" name="player_1" placeholder="{{ entry.player_1 }}"></td> 
+                            <td><input type="text" class="form-control form-control-sm" name="player_2" placeholder="{{ entry.player_2 }}"></td> 
+                            <td><input type="number" class="form-control form-control-sm" name="score_1" placeholder="{{ entry.score_1 }}"></td> 
+                            <td><input type="number" class="form-control form-control-sm" name="score_2" placeholder="{{ entry.score_2 }}"></td> 
                             <td></td>
                             <td>
                                 <button type="submit" class="btn btn-success btn-sm">Save</button>
