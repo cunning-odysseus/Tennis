@@ -4,7 +4,7 @@
     <!-- Dit zijn de instellingen voor de website -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for("static", filename="styles.css") }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <!-- Deze zijn nodig voor de dropdown list met search -->
 
@@ -21,7 +21,7 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <!-- Favicon -->
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}"> 
+    <link rel="shortcut icon" href="{{ url_for("static", filename="favicon.png") }}"> 
     <title>Table Tennis Leaderboard</title>
 
 </head>
@@ -43,6 +43,10 @@
                     </li>
 
                     <li class="nav-item">
+                        <a class="nav-link active" href="/about">About</a>
+                    </li> 
+
+                    <li class="nav-item">
                         <a class="nav-link active" href="/logout">Logout</a>
                     </li> 
                 </ul>
@@ -53,7 +57,19 @@
     <div>
         <!-- Form voor het toevoegen van een wedstrijd -->
         <label> <strong> Add match </strong> </label>
-            <form action="{{ url_for('add_match') }}" method="POST">
+
+        	<!-- Flash Messages Block -->
+			{% with messages = get_flashed_messages() %}
+			{% if messages %}
+				<div class="alert alert-warning" role="alert">
+				{% for message in messages %}
+					<p>{{ message }}</p>
+				{% endfor %}
+				</div>
+			{% endif %}
+			{% endwith %}
+
+            <form action="{{ url_for("add_match") }}" method="POST">
 
                 <div class="row g-2">
                 
@@ -63,8 +79,10 @@
                             <form>
                                 <select class="form-select-sm"  id="players" name="player_2" required>
                                     <option value="" disabled selected></option>
-                                    {% for user in users %}
-                                        <option value="{{user}}">{{user}}</option>
+                                    {% for index, row in users.iterrows() %}
+                                        {% if row.username != c_user %} <!-- Huidige gebruiker uit de opties filteren -->
+                                            <option value="{{row.username}}">{{row.username}}</option>
+                                        {% endif %}
                                     {% endfor %}
                                 </select>
                             </form>
@@ -73,7 +91,7 @@
                         <!-- Initialize Select2 -->
                         <script>
                             $(document).ready(function() {
-                                $('#players').select2({
+                                $("#players").select2({
                                     theme: "bootstrap-5",
                                     placeholder: "Your opponent",
                                     allowClear: true,
@@ -108,7 +126,7 @@
     <div class="mt-2">
     <!-- Dit is de filter voor de wedstrijdgeschiedenis -->
         <form action="/" method="GET">
-            <label class="form-label"> <strong> Filter matches </strong> </label>
+            <label class="form-label"> <strong> Filter match history </strong> </label>
             <div class="row g-2">
 
                 <div class="col-md-2">
@@ -127,7 +145,7 @@
                     <!-- Initialize Select2 -->
                     <script>
                         $(document).ready(function() {
-                            $('#match_history_player_filter').select2({
+                            $("#match_history_player_filter").select2({
                                 theme: "bootstrap-5",
                                 placeholder: "Player",
                                 allowClear: true,
@@ -167,14 +185,14 @@
                 </tr>
             </thead>
             <tbody>
-                {% if current_user.email == 'caiovanbeek@outlook.com' %}
+                {% if current_user.email == email_admin %}
                     {% for entry in match_history_table %}
                         {% if match_id == entry.match_id %}
                         <tr>
                             <!-- 
                             Bij een form kun je zowel post als get gebruiken, bij a href kun je alleen get gebruiken en put/delete alleen via javascript 
                             -->
-                            <form action="{{ url_for('update_item', match_id = entry.match_id) }}" method="POST">
+                            <form action="{{ url_for("update_item", match_id = entry.match_id) }}" method="POST">
                             <td><input type="text" class="form-control form-control-sm" name="player_1" placeholder="{{ entry.player_1 }}"></td> 
                             <td><input type="text" class="form-control form-control-sm" name="player_2" placeholder="{{ entry.player_2 }}"></td> 
                             <td><input type="number" class="form-control form-control-sm" name="score_1" placeholder="{{ entry.score_1 }}"></td> 
@@ -182,7 +200,7 @@
                             <td></td>
                             <td>
                                 <button type="submit" class="btn btn-success btn-sm">Save</button>
-                                <a href="{{url_for('delete_item', match_id = entry.match_id) }}" class="btn btn-danger btn-sm" role="button" >Delete</a>
+                                <a href="{{url_for("delete_item", match_id = entry.match_id) }}" class="btn btn-danger btn-sm" role="button" >Delete</a>
                                 <a href="/" class="btn btn-warning btn-sm" role="button">Cancel</a>
                             </td>
                             </form>
@@ -241,8 +259,8 @@
                         <!-- Initialize Select2 -->
                         <script>
                             $(document).ready(function() {
-                                $('#rating_player_filter').select2({
-                                    theme: 'bootstrap-5',
+                                $("#rating_player_filter").select2({
+                                    theme: "bootstrap-5",
                                     placeholder: "Player",
                                     allowClear: true,
                                     width: "100%"
@@ -277,8 +295,8 @@
                 {% for index, row in Player_rating.iterrows(): %}
                     <tr>
                         <td> {{ index + 1}} </td>
-                        <td>{{ row['Player'] }}</td>
-                        <td>{{ row['Rating'] }}</td>
+                        <td>{{ row["Player"] }}</td>
+                        <td>{{ row["Rating"] }}</td>
                     </tr>
                 {% endfor %}
             </tbody>

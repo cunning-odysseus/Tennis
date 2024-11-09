@@ -5,7 +5,7 @@
     <!-- Dit zijn de instellingen voor de website -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for("static", filename="styles.css") }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <!-- Deze zijn nodig voor de dropdown list met search -->
 
@@ -22,7 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <!-- Favicon -->
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}"> 
+    <link rel="shortcut icon" href="{{ url_for("static", filename="favicon.png") }}"> 
     <title>Table Tennis Leaderboard</title>
 
     <!-- Plotly -->
@@ -47,6 +47,10 @@
                     </li>
 
                     <li class="nav-item">
+                        <a class="nav-link active" href="/about">About</a>
+                    </li> 
+
+                    <li class="nav-item">
                         <a class="nav-link active" href="/logout">Logout</a>
                     </li> 
                 </ul>
@@ -57,7 +61,7 @@
     <div class="mt-2">
         <!-- Dit is de filter voor de spelersstatistieken -->
             <form action="/player_statistics" method="GET">
-                <label class="form-label"> <strong> Filter player statistics </strong> </label>
+                <label class="form-label"> <strong> Player statistics summary </strong> </label>
                 <div class="row g-2">
     
                     <div class="col-md-2">
@@ -76,7 +80,7 @@
                         <!-- Initialize Select2 -->
                         <script>
                             $(document).ready(function() {
-                                $('#statistics_player_filter').select2({
+                                $("#statistics_player_filter").select2({
                                     theme: "bootstrap-5",
                                     placeholder: "Player",
                                     allowClear: true,
@@ -98,7 +102,7 @@
             </form>
         </div>
 
-    <label> <strong> Player statistics summary </strong> </label>
+
     <div class="scroll-player_stat_page mt-2">
         <!-- Dit is de tabel met statistieken -->
         <table class="table table-sm">
@@ -112,10 +116,36 @@
                 <tbody>
                     {% for index, row in stats.iterrows(): %}
                     <tr>
-                        <td> {{ row['Player']}} </td>
-                        <td>{{ row['Average score'] }}</td>
-                        <td>{{ row['Wins'] }}</td>
-                        <td>{{ row['Losses'] }}</td>
+                        <td> {{ row["Player"]}} </td>
+                        <td>{{ row["Average score"] }}</td>
+                        <td>{{ row["Wins"] }}</td>
+                        <td>{{ row["Losses"] }}</td>
+                    </tr>
+
+                    {% endfor %}
+                </tbody>
+            </thead>
+        </table>
+    </div>
+
+    <div class="scroll-player_stat_page mt-2">
+        <label class="form-label"> <strong> Your performance against others </strong> </label>
+        <!-- Dit is de tabel met user performance -->
+        <table class="table table-sm">
+            <thead class="sticky-head table-dark">
+                <tr>
+                    <th>Opponent</th>
+                    <th>Wins</th>
+                    <th>Losses</th>
+                    <th>Average score</th>
+                </tr>
+                <tbody>
+                    {% for index, row in user_performance.iterrows(): %}
+                    <tr>
+                        <td> {{ row["Opponent"]}} </td>
+                        <td>{{ row["Win"] }}</td>
+                        <td>{{ row["Loss"] }}</td>
+                        <td>{{ row["user_score"] }}</td>
                     </tr>
 
                     {% endfor %}
@@ -130,7 +160,7 @@
         <div id="plotly-div"></div>
         <script type="text/javascript">
             var graphJSON = {{ graphJSON | safe }};
-            Plotly.newPlot('plotly-div', graphJSON.data, graphJSON.layout);
+            Plotly.newPlot("plotly-div", graphJSON.data, graphJSON.layout);
         </script>
     </div>
 
