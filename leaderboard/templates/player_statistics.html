@@ -100,7 +100,7 @@
     
                 </div>
             </form>
-        </div>
+    </div>
 
 
     <div class="scroll-player_stat_page mt-2">
@@ -128,8 +128,51 @@
         </table>
     </div>
 
-    <div class="scroll-player_stat_page mt-2">
+    <div class="mt-2">
         <label class="form-label"> <strong> Your performance against others </strong> </label>
+        <!-- Dit is de filter voor de opponent -->
+            <form action="/player_statistics" method="GET">
+                <div class="row g-2">
+    
+                    <div class="col-md-2">
+                        <!-- Drowpdown menu voor het selecteren van een speler -->
+                        <div class="form-group">
+                            <form>
+                                <select class="form-select-sm"  id="performance_player_filter" name="opponent" required>
+                                    <option value="" disabled selected></option>
+                                    {% for user in users %}
+                                        <option value="{{user}}">{{user}}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                        </div>
+                        
+                        <!-- Initialize Select2 -->
+                        <script>
+                            $(document).ready(function() {
+                                $("#performance_player_filter").select2({
+                                    theme: "bootstrap-5",
+                                    placeholder: "Opponent",
+                                    allowClear: true,
+                                    width: "100%"
+                                });
+                            });
+                        </script>
+                    </div>
+    
+                    <div class="col-md-auto">
+                        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                    </div>
+    
+                    <div class="col-md-auto">
+                        <a class="btn btn-warning btn-sm" href="/player_statistics" role="button">Reset</a>
+                    </div>
+    
+                </div>
+            </form>
+    </div>
+
+    <div class="scroll-player_stat_page mt-2">
         <!-- Dit is de tabel met user performance -->
         <table class="table table-sm">
             <thead class="sticky-head table-dark">

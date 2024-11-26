@@ -104,11 +104,11 @@
 
     
                     <div class="col-md-2">
-                        <input type="number" class="form-control form-control-sm" name="score_1" placeholder="Score 1" required>
+                        <input type="number" class="form-control form-control-sm" name="score_1" placeholder="Your score" required>
                     </div>
     
                     <div class="col-md-2">
-                        <input type="number" class="form-control form-control-sm" name="score_2" placeholder="Score 2" required>
+                        <input type="number" class="form-control form-control-sm" name="score_2" placeholder="Opponent score" required>
                     </div>
 
                     <div class="col-md-2">
@@ -135,7 +135,7 @@
                         <form>
                             <select class="form-select-sm"  id="match_history_player_filter" name="player" >
                                 <option value="" disabled selected></option>
-                                {% for user in users %}
+                                {% for user in users['username'] %}
                                     <option value="{{user}}">{{user}}</option>
                                 {% endfor %}
                             </select>
@@ -249,7 +249,7 @@
                             <form>
                                 <select class="form-select-sm"  id="rating_player_filter" name="player_rating" required>
                                     <option value="" disabled selected></option>
-                                    {% for user in users %}
+                                    {% for user in users['username'] %}
                                         <option value="{{user}}">{{user}}</option>
                                     {% endfor %}
                                 </select>

@@ -98,13 +98,15 @@ def most_recent_rating(match_history):
                       "Rating": []}
     for name in (set(list(match_history["player_1"]) + list(match_history["player_2"]))):
         selection = match_history[(match_history["player_1"] == name) | (match_history["player_2"] == name)]
-        most_recent_date = selection[selection["date"] == selection["date"].max()]
         
-        if name in most_recent_date["player_1"].values:
-            most_recent_rating = most_recent_date["rating_p1"].iloc[0]
+        # wedstrijd met hoogste (nieuwste) id
+        most_recent_match = selection[selection["match_id"] == selection["match_id"].max()]
         
-        elif name in most_recent_date["player_2"].values:
-            most_recent_rating = most_recent_date["rating_p2"].iloc[0]
+        if name in most_recent_match["player_1"].values:
+            most_recent_rating = most_recent_match["rating_p1"].iloc[0]
+        
+        elif name in most_recent_match["player_2"].values:
+            most_recent_rating = most_recent_match["rating_p2"].iloc[0]
         
         else:
             print("player name not found")

@@ -1,4 +1,7 @@
 # TODO: db naam aanpassen
+# TODO: navbalk vastzetten op pagina ook tijdens scrollen?
+
+
 
 import os
 import sqlite3
@@ -71,7 +74,6 @@ db = SQLAlchemy(app)
 ## Databases 
 ################################
 
-# Dit is een tabel in SQLite 
 class MatchHistory(db.Model):
     match_id = db.Column(db.Integer, primary_key=True)
     player_1 = db.Column(db.String(80), nullable=False)
@@ -82,7 +84,6 @@ class MatchHistory(db.Model):
     rating_p1 = db.Column(db.Integer, nullable=True)
     rating_p2 = db.Column(db.Integer, nullable=True) 
     
-
 class Users(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     email = db.Column(db.String(250), unique=True, nullable=False)
@@ -107,11 +108,6 @@ def user_id_exists(user_id):
 def email_exists(email):
     return bool(db.session.query(Users.query.filter_by(email=email).exists()).scalar())
 
-# De route decorator wordt gebruikt om Flask te vertellen welke URL de functie zou moeten triggeren
-# HTML content in de string wordt gerenderd
-# @route verteld wat er moet worden laten zien wanneer je een bepaalde URL gebruikt in je browser
-# Hier staat / -> dus wanneer de hoofdpagina (index page) geladen wordt, dan wordt dit laten zien   
-
 def invullen(regelid):
     if len(request.args.keys()) == 0:
         return f"{request.url}?edit={regelid}"
@@ -131,23 +127,27 @@ def send_email(subject, body, sender, recipients, password):
     print("Message sent!")
     
 def is_blacklisted(username):
-    # Define the blacklist
-    blacklist = set(get_blacklist() + settings.blacklist)
+    blacklist = get_blacklist()
                     
-    # Check if any blacklisted term is a substring in the username
     for word in blacklist:
         if word.lower() in username.lower():
             return True
     return False
 
-
 ###################################
 ## Routes
-###################################
+#################################### 
+
+# De route decorator wordt gebruikt om Flask te vertellen welke URL de functie zou moeten triggeren
+# HTML content in de string wordt gerenderd
+# @route verteld wat er moet worden laten zien wanneer je een bepaalde URL gebruikt in je browser
+# Hier staat / -> dus wanneer de hoofdpagina (index page) geladen wordt, dan wordt dit laten zien   
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    # Define username pattern
+    """ Pagina waar nieuwe gebruikers zich kunnen aanmelden """
+    
+    # Username voorwaarden in regex
     pattern = r"^[a-zA-Z0-9]([._-]?[a-zA-Z0-9]){2,14}$"
     
     if request.method == "POST":
@@ -156,17 +156,17 @@ def register():
         password = request.form.get("password")
         password_check = request.form.get("password_check")
         
-        # Validate email
+        # email valideren
         if email_exists(email):
             flash("Email already exists")
             return render_template("sign_up.html")
         
-        # Validate username
+        # username valideren
         if not re.fullmatch(pattern, username):
             flash("Username not valid. It should contain only letters, numbers, dots, underscores, or hyphens.")
             return render_template("sign_up.html")
         
-        # Check of username geblacklist is
+        # Check op username
         if is_blacklisted(username):
             flash(f"'{username}' is blacklisted.")
             return render_template("sign_up.html")
@@ -200,111 +200,111 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if request.method=="POST": 
-        # checken of email bestaat
-        if email_exists(request.form.get("email")) == True:
-            user = Users.query.filter_by(
-                email=request.form.get("email")).first()
-            
-            if bool(user):
-                # checken of het wachtwoord bij de gebruiker hoort
-                if bcrypt.check_password_hash(user.password, request.form.get("password")):
-                    login_user(user)
-                    return redirect(url_for("index"))
+    """Pagina waar gebruikers kunnen inloggen"""
 
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        # Check if email exists
+        user = Users.query.filter_by(email=email).first()
+        
+        if user:
+            # Check if the password matches
+            if bcrypt.check_password_hash(user.password, password):
+                login_user(user)
+                return redirect(url_for("index"))
             else:
                 flash("Password was incorrect")
-                return redirect(url_for("login"))
-        
+                return render_template("login.html", email=email)
         else:
             flash("Email not found")
-            return redirect(url_for("login"))
+            return render_template("login.html", email=email)
+    
     return render_template("login.html")
 
 @app.route("/logout")
 def logout():
-	logout_user()
-	return redirect(url_for("login"))
+    logout_user()
+    flash("You have been logged out.")
+    return redirect(url_for("login"))
+
 
 @app.route("/forgot_password", methods=["GET", "POST"])
 def forgot_password():
+    """Pagina waar gebruikers een aanvraag tot wijziging van hun wachtwoord kunnen indienen"""
     
-    # Gebruikers ophalen
-    conn = sqlite3.connect(settings.db_path) # Verbinding maken met de database
-    users = pd.read_sql_query("SELECT * FROM users", conn)
-    conn.close() # Verbinding sluiten
-    
-    if request.method=="POST":      
+    if request.method == "POST":      
         email = request.form.get("email")
-        if email in users["email"].to_list():
-            token = s.dumps(email, salt="password-reset-salt")  # Generate a token
+        
+        # Check if email exists in the database
+        conn = sqlite3.connect(settings.db_path)
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM users WHERE email = ?", (email,))
+        user_exists = cursor.fetchone() is not None
+        conn.close()
+        
+        if user_exists:
+            # Generate token for password reset
+            token = s.dumps(email, salt="password-reset-salt")  
             reset_link = url_for("reset_password", token=token, _external=True)
             
-            # email 
+            # Send email with reset link
             body = f"""
                     Hello,
 
                     Here is the reset link for your password:
                     {reset_link}
 
-                    Kind regards,  
-                    Caio from the Tabletennis webapp 
+                    Kind regards,
+                    Caio from the Table Tennis webapp
                     """
                     
             send_email(settings.subject, body, settings.sender, [email], settings.password)
 
             flash("A password reset link has been sent to your email.")
-            return render_template("login.html")
+            return redirect(url_for("login"))  # Redirect to login after sending email
             
         else:
-            flash("Email adress not found. Please try again.")
-            return redirect(url_for("forgot_password.html"))
+            flash("Email address not found. Please try again.")
+            return redirect(url_for("forgot_password"))  # Stay on the forgot password page if email is not found
     
-    return render_template("forgot_password.html")
+    return render_template("forgot_password.html")  # Render forgot password form if method is GET
 
 
 @app.route("/reset_password/<token>", methods=["GET", "POST"])
 def reset_password(token):
-    # Database pad
-    db_path = settings.db_path
-    
-    # Gebruikers ophalen
-    conn = sqlite3.connect(settings.db_path) # Verbinding maken met de database
-    users = pd.read_sql_query("SELECT * FROM users", conn) 
-    conn.close() # Verbinding sluiten
-    
+    """Pagina voor wachtwoord reset via een unieke link"""
+
     try:
-        email = s.loads(token, salt="password-reset-salt", max_age=3600)  # Valid for 1 hour
+        # Decode de token om het emailadres te verkrijgen; geldig voor 1 uur
+        email = s.loads(token, salt="password-reset-salt", max_age=3600)
     except SignatureExpired:
-        flash("The password reset link has expired.")
-        return redirect(url_for("reset_password.html"))
+        flash("The password reset link has expired. Please request a new one.")
+        return redirect(url_for("forgot_password"))
     except BadSignature:
         flash("Invalid password reset link.")
-        return redirect(url_for("reset_password.html"))
+        return redirect(url_for("forgot_password"))
     
     if request.method == "POST":
+        # Nieuw wachtwoord ophalen vanuit het formulier
         new_password = request.form.get("new_password")
         
-        # wachtwoorden hashen
+        # Hash het nieuwe wachtwoord
         hashed_password = bcrypt.generate_password_hash(new_password).decode("utf-8")
-
-        # zoek user en update het wachtwoord
-        if email in users["email"].to_list():
-            users.loc[users["email"] == email, "password"] = hashed_password 
-            flash("Your password has been reset successfully.")
         
-            # opslaan in de database
-            with sqlite3.connect(db_path) as conn:
-                users.to_sql("users", conn, if_exists="replace", index=False)  # Save changes
-                conn.commit()
-            
-            return redirect(url_for("login"))
+        # Update het wachtwoord van de gebruiker in de database
+        conn = sqlite3.connect(settings.db_path)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_password, email))
+        conn.commit()
+        conn.close()
         
-        else:
-            print("No user found, updating password was unsuccessful")
-
+        flash("Your password has been reset successfully. You can now log in with your new password.")
+        return redirect(url_for("login"))
+    
+    # Render de pagina om het wachtwoord te resetten, inclusief de token in de context
     return render_template("reset_password.html", token=token)
-
 
 @app.route("/", methods=["GET"])
 @login_required
@@ -369,6 +369,7 @@ def index():
 @app.route("/player_statistics", methods=["GET"])
 @login_required
 def index_player_stats():
+    """ Dit is de pagina met spelersstatistieken """
     
     # Hier wordt de tabel met ratings opgehaald
     conn = sqlite3.connect(settings.db_path) # Verbinding maken met de database
@@ -381,10 +382,21 @@ def index_player_stats():
     rating_progression = module.player_rating_progression(match_history)
     user_performance = module.performance_vs_others(match_history, current_user.username)
     
+    # filter voor de player  table
     if "player" in request.args.keys() and bool(request.args["player"]):
         player_name = request.args["player"]
         stats = stats[stats["Player"] == player_name]
     else:
+        pass
+    
+    # filter voor de performance vs others table
+    if "opponent" in request.args.keys() and bool(request.args["opponent"]):
+        opponent = request.args["opponent"]
+        print(opponent)
+        user_performance = user_performance[user_performance["Opponent"] == opponent] # In tegenstelling tot de wedstrijdgeschiedenis is deze data in de form van een df
+        
+    else:
+        print('opponent not found')
         pass
 
     # Initialize an empty figure
@@ -415,6 +427,7 @@ def index_player_stats():
 @app.route("/about", methods=["GET"])
 @login_required
 def about():
+    """ Pagina met info over de website """
     return render_template("about.html")
 
 
@@ -426,74 +439,69 @@ def add_match():
     Dit is de pagina waarin een post verstuurd wordt naar de server met de wedstrijd input.
     Na het binnenkrijgen van de wedstrijdgegevens wordt hier aan de backend ook een nieuwe berekening gemaakt van de ratings.
     """
-    # Hier wordt de informatie opgehaald uit de velden
+     # Ophalen van wedstrijdgegevens uit de formuliervelden
     player_1 = current_user.username
     player_2 = request.form.get("player_2")
     score_1 = int(request.form.get("score_1"))
     score_2 = int(request.form.get("score_2"))
     date = datetime.strptime(request.form.get("datetime"), "%Y-%m-%dT%H:%M")
-    
-    if date >= datetime.now():
-        flash("Mag niet in de toekomst")
-        return redirect(url_for("index"))
-    
-    # Controle op gelijkspel
-    if score_1 == score_2:
-        flash("Score mag niet gelijk zijn")
-        return redirect(url_for("index"))
-    else:
-        pass
-    
-    # Controle op naam
-    if player_1 == player_2:
-        flash("Spelersnamen mogen niet hetzelfde zijn")
-        return redirect(url_for("index"))
-    else:
-        pass
-    
-    # Controle op verschil score
-    if abs(score_1 - score_2) < 2:
-        flash("Scoreverschil moet 2 of groter zijn")
-        return redirect(url_for("index"))
-    else:
-        pass
-    
-    # Hier worden de ratings opnieuw berekend
-    # Verbinden en ophalen van huidige database
-    conn = sqlite3.connect(settings.db_path)
-    match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
-    conn.close()
-    
-    # Hier wordt een match_id gemaakt voor de nieuwe wedstrijd, omdat elke match een unieke id heeft
-    if len(match_history["match_id"]) == 0:
-        new_id = 1
-    else:
-        new_id = int(match_history["match_id"].max() + 1)
-    
-    # Hier wordt een df gemaakt met de gegevens van de nieuwe match waarbij de kolommen met de ratings leeg blijven
-    new_row = pd.DataFrame({
-        "match_id": new_id,
-        "player_1": player_1,
-        "player_2": player_2,
-        "score_1": score_1,
-        "score_2": score_2,
-        "date": date,
-        "rating_p1": "",
-        "rating_p2": ""
-    }, index=[0])
-    
-    match_history["date"] = pd.to_datetime(match_history["date"]) # Datum kolom omzetten naar datetime
-    
-    # Hier wordt de nieuwe rij aan de huidige wedstrijdgeschiedenis toegevoegd
-    match_history = pd.concat([match_history, new_row], ignore_index=True).sort_values("date", ascending=True)
 
-    # Ratings verversen
-    match_history = module.calculate_ratings(match_history)
+    # Valideren van de wedstrijdgegevens
+    if date >= datetime.now():
+        flash("Date cannot be in the future.")
+        return redirect(url_for("index"))
     
-    # Hier wordt de nieuwe versie weggeschreven naar de database
-    conn = sqlite3.connect(settings.db_path)
-    match_history.to_sql("match_history", conn, if_exists="replace", index=False)
-    conn.close()
+    if score_1 == score_2:
+        flash("Scores cannot be tied.")
+        return redirect(url_for("index"))
+    
+    if player_1 == player_2:
+        flash("Players cannot have the same name.")
+        return redirect(url_for("index"))
+    
+    if abs(score_1 - score_2) < 2:
+        flash("Score difference must be at least 2.")
+        return redirect(url_for("index"))
+    
+    if score_1 > 20 or score_2 > 20:
+        pass
+    
+    else:
+        flash("A game is played until at least 11 points.")
+        return redirect(url_for("index"))
+    
+
+    # Verbinden met de database en ophalen van de huidige wedstrijdgeschiedenis
+    with sqlite3.connect(settings.db_path) as conn:
+        match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
+
+    # Genereer een unieke `match_id`
+    new_id = int(match_history["match_id"].max() + 1) if not match_history.empty else 1
+
+    # Maak een nieuwe rij voor de nieuwe wedstrijd
+    new_row = pd.DataFrame({
+        "match_id": [new_id],
+        "player_1": [player_1],
+        "player_2": [player_2],
+        "score_1": [score_1],
+        "score_2": [score_2],
+        "date": [date],
+        "rating_p1": [""],  # Plaatsvervanger voor bijgewerkte ratings
+        "rating_p2": [""]
+    })
+
+    # Voeg de nieuwe rij toe aan de huidige wedstrijdgeschiedenis en sorteer op datum
+    match_history["date"] = pd.to_datetime(match_history["date"])
+    match_history = pd.concat([match_history, new_row], ignore_index=True).sort_values("date")
+
+    # Herbereken de ratings
+    match_history = module.calculate_ratings(match_history)
+
+    # Sla de bijgewerkte wedstrijdgeschiedenis op in de database
+    with sqlite3.connect(settings.db_path) as conn:
+        match_history.to_sql("match_history", conn, if_exists="replace", index=False)
+
+    flash("Match added and ratings updated.")
     return redirect(url_for("index"))
 
 
@@ -567,6 +575,7 @@ def update_item(match_id):
 @app.route("/delete/<int:match_id>", methods=["GET"])
 @login_required
 def delete_item(match_id):
+    """ Deze pagina kan alleen bezocht worden door de beheerder ter behoeve van het verwijderen van een wedstrijd """
     
     # Ophalen van wedstrijd die aangepast moet worden adhv match id
     # match_to_update = MatchHistory.query.get(match_id)
