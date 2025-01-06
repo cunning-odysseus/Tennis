@@ -210,7 +210,7 @@ def performance_vs_others(match_history, user):
         "Win": "sum",
         "Loss": "sum",
         "user_score": "mean"
-    }).reset_index()
+    }).reset_index().round(2)
 
     return user_performance
 

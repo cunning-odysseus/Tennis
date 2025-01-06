@@ -1,8 +1,6 @@
 # TODO: db naam aanpassen
 # TODO: navbalk vastzetten op pagina ook tijdens scrollen?
 
-
-
 import os
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, flash
@@ -41,7 +39,7 @@ if not os.path.exists(db_dir):
 # a string used to configure the connection to a database. Its typically in the format of a URL and includes the 
 # username, password, hostname, database name, and port number. The format of the URL is
 # dialect+driver://username:password@host:port/database.
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(db_dir, 'match_history.db')}"
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(db_dir, 'data.db')}"
 
 # Enter a secret key which can be any random string of characters, and is necessary as Flask-Login requires it to sign session cookies for protection again data tampering.
 app.config["SECRET_KEY"] = settings.secret_key
@@ -422,7 +420,7 @@ def index_player_stats():
     graphJSON = pio.to_json(fig)
 
     # Pass the JSON data to the template
-    return render_template("player_statistics.html", graphJSON=graphJSON, stats=stats, users=users, user_performance=user_performance)
+    return render_template("player_statistics.html", graphJSON=graphJSON, stats=stats, users=users, user_performance=user_performance, c_user=current_user.username)
 
 @app.route("/about", methods=["GET"])
 @login_required
@@ -445,6 +443,8 @@ def add_match():
     score_1 = int(request.form.get("score_1"))
     score_2 = int(request.form.get("score_2"))
     date = datetime.strptime(request.form.get("datetime"), "%Y-%m-%dT%H:%M")
+    
+    print(player_1, player_2)
 
     # Valideren van de wedstrijdgegevens
     if date >= datetime.now():
@@ -463,13 +463,17 @@ def add_match():
         flash("Score difference must be at least 2.")
         return redirect(url_for("index"))
     
-    if score_1 > 20 or score_2 > 20:
-        pass
+    if (score_1 > 11 or score_2 > 11) and abs(score_1 - score_2) > 2:
+        flash("Score difference can only be 2 when playing over 11 points")
+        return redirect(url_for("index"))
     
-    else:
+    if score_1 < 11 and score_2 < 11:
         flash("A game is played until at least 11 points.")
         return redirect(url_for("index"))
     
+    else:
+        pass
+
 
     # Verbinden met de database en ophalen van de huidige wedstrijdgeschiedenis
     with sqlite3.connect(settings.db_path) as conn:

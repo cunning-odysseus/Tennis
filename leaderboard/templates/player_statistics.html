@@ -70,7 +70,7 @@
                             <form>
                                 <select class="form-select-sm"  id="statistics_player_filter" name="player" required>
                                     <option value="" disabled selected></option>
-                                    {% for user in users %}
+                                    {% for user in users%}
                                         <option value="{{user}}">{{user}}</option>
                                     {% endfor %}
                                 </select>
@@ -140,8 +140,10 @@
                             <form>
                                 <select class="form-select-sm"  id="performance_player_filter" name="opponent" required>
                                     <option value="" disabled selected></option>
-                                    {% for user in users %}
-                                        <option value="{{user}}">{{user}}</option>
+                                    {% for user in users%}
+                                        {% if user != c_user %} <!-- Huidige gebruiker uit de opties filteren -->
+                                            <option value="{{user}}">{{user}}</option>
+                                        {% endif %}
                                     {% endfor %}
                                 </select>
                             </form>
