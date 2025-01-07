@@ -125,7 +125,7 @@ def send_email(subject, body, sender, recipients, password):
     print("Message sent!")
     
 def is_blacklisted(username):
-    blacklist = get_blacklist()
+    blacklist = []#get_blacklist()
                     
     for word in blacklist:
         if word.lower() in username.lower():
