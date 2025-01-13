@@ -199,7 +199,6 @@ def register():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Pagina waar gebruikers kunnen inloggen"""
-
     if request.method == "POST":
         email = request.form.get("email")
         password = request.form.get("password")
@@ -444,8 +443,6 @@ def add_match():
     score_2 = int(request.form.get("score_2"))
     date = datetime.strptime(request.form.get("datetime"), "%Y-%m-%dT%H:%M")
     
-    print(player_1, player_2)
-
     # Valideren van de wedstrijdgegevens
     if date >= datetime.now():
         flash("Date cannot be in the future.")
