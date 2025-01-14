@@ -444,7 +444,7 @@ def add_match():
     date = datetime.strptime(request.form.get("datetime"), "%Y-%m-%dT%H:%M")
     
     # Valideren van de wedstrijdgegevens
-    if date >= datetime.now():
+    if date > datetime.now():
         flash("Date cannot be in the future.")
         return redirect(url_for("index"))
     

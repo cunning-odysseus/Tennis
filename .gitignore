@@ -1,1 +1,3 @@
 leaderboard/settings.py
+#leaderboard/data/data.db
+leaderboard/data_backup
