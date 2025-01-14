@@ -20,6 +20,9 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 import settings
 from the_big_username_blacklist import get_blacklist
 from sqlalchemy.orm import Session
+import pytz
+
+current_time_zone = pytz.timezone("Europe/Amsterdam")
 
 # Hier wordt een flask object gemaakt met de naam "app"
 app = Flask(__name__)
@@ -444,7 +447,7 @@ def add_match():
     date = datetime.strptime(request.form.get("datetime"), "%Y-%m-%dT%H:%M")
     
     # Valideren van de wedstrijdgegevens
-    if date > datetime.now():
+    if date > datetime.now(current_time_zone):
         flash("Date cannot be in the future.")
         return redirect(url_for("index"))
     
