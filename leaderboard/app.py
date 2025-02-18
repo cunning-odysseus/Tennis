@@ -20,7 +20,7 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from the_big_username_blacklist import get_blacklist
 from sqlalchemy.orm import Session
 import sys
-sys.path.append('.~/apps/settings.py')
+sys.path.append('~/apps/settings.py')
 import settings
 
 
