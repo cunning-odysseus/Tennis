@@ -86,7 +86,6 @@ def calculate_ratings(match_history):
             result_p1=row["result_p1"], result_p2=row["result_p2"],
             date=row["date"], current_rating_p1=rating_p1, current_rating_p2=rating_p2
         )
-        print(updated)
         # De nieuwe ratings van beide spelers in de dictionary "current_rating" updaten.
         current_rating[p1] = updated[f"new_rating_{p1}"]
         current_rating[p2] = updated[f"new_rating_{p2}"]

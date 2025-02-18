@@ -39,8 +39,8 @@ if not os.path.exists(db_dir):
 # a string used to configure the connection to a database. Its typically in the format of a URL and includes the 
 # username, password, hostname, database name, and port number. The format of the URL is
 # dialect+driver://username:password@host:port/database.
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(db_dir, 'data.db')}"
-
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{settings.db_path}"
+print(f"sqlite:///{os.path.join(db_dir, 'data.db')}")
 # Enter a secret key which can be any random string of characters, and is necessary as Flask-Login requires it to sign session cookies for protection again data tampering.
 app.config["SECRET_KEY"] = settings.secret_key
 
