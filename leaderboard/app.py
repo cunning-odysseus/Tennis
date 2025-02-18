@@ -17,9 +17,12 @@ from flask_bcrypt import Bcrypt
 import smtplib
 from email.mime.text import MIMEText
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
-import settings
 from the_big_username_blacklist import get_blacklist
 from sqlalchemy.orm import Session
+import sys
+sys.path.append('.~/apps/settings.py')
+import module
+
 
 # Hier wordt een flask object gemaakt met de naam "app"
 app = Flask(__name__)
