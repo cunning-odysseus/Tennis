@@ -21,7 +21,7 @@ from the_big_username_blacklist import get_blacklist
 from sqlalchemy.orm import Session
 import sys
 sys.path.append('.~/apps/settings.py')
-import module
+import settings
 
 
 # Hier wordt een flask object gemaakt met de naam "app"
