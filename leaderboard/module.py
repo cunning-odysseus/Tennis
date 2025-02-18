@@ -12,7 +12,7 @@ def prob_win(current_rating_p1, current_rating_p2,):
     Berekend de kans dat een speler wint van de ander.
     Is onderdeel van update_rating
     """
-    prob_player_1_win = 1 / ( 1 + 10**((current_rating_p1 - current_rating_p2)/400))
+    prob_player_1_win = 1 / ( 1 + 10**((current_rating_p2 - current_rating_p1)/400))
     
     return prob_player_1_win
 
@@ -29,6 +29,12 @@ def update_rating(p1, p2, result_p1, result_p2, date, current_rating_p1=400, cur
     
     new_rating_player_1 = int(current_rating_p1 + 32*(result_p1 - p_win_p1))
     new_rating_player_2 = int(current_rating_p2 + 32*(result_p2 - p_win_p2))
+    
+    if new_rating_player_1 < 100:
+        new_rating_player_1 = 100
+    
+    if new_rating_player_2 < 100:
+        new_rating_player_2 = 100
     
     result[f"p_win {p1}"] = p_win_p1
     result[f"p_win {p2}"] = p_win_p2
@@ -80,7 +86,7 @@ def calculate_ratings(match_history):
             result_p1=row["result_p1"], result_p2=row["result_p2"],
             date=row["date"], current_rating_p1=rating_p1, current_rating_p2=rating_p2
         )
-
+        print(updated)
         # De nieuwe ratings van beide spelers in de dictionary "current_rating" updaten.
         current_rating[p1] = updated[f"new_rating_{p1}"]
         current_rating[p2] = updated[f"new_rating_{p2}"]
