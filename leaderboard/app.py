@@ -16,10 +16,10 @@ from email.mime.text import MIMEText
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from the_big_username_blacklist import get_blacklist
 from sqlalchemy.orm import Session
-import sys
-sys.path.append(os.path.expanduser('~/apps'))
-import settings
+from dotenv import load_dotenv
 
+
+load_dotenv()
 
 # Hier wordt een flask object gemaakt met de naam "app"
 app = Flask(__name__)
@@ -39,17 +39,17 @@ if not os.path.exists(db_dir):
 # a string used to configure the connection to a database. Its typically in the format of a URL and includes the 
 # username, password, hostname, database name, and port number. The format of the URL is
 # dialect+driver://username:password@host:port/database.
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{settings.db_path}"
-print(f"sqlite:///{os.path.join(db_dir, 'data.db')}")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+
 # Enter a secret key which can be any random string of characters, and is necessary as Flask-Login requires it to sign session cookies for protection again data tampering.
-app.config["SECRET_KEY"] = settings.secret_key
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
 # Hier wordt de app verteld dat het niet aanpassingen moet loggen in een apart bestand
 # Dat zorgt namelijk voor overhead
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Itsdangerous serializer for generating tokens
-s = URLSafeTimedSerializer(app.secret_key)
+s = URLSafeTimedSerializer(os.getenv("SECRET_KEY"))
 
 # LoginManager is needed for our application 
 # to be able to log in and out users
@@ -66,31 +66,32 @@ bcrypt = Bcrypt(app)
 # When you use sqlalchemy() with a Flask object, it helps you to map your Python classes to the tables in 
 # your database. This means you can create, read, update, and delete data in your database using Python objects, 
 # without having to write SQL code.
-db = SQLAlchemy(app)
+DB = SQLAlchemy(app)
 
 #################################
 ## Databases 
 ################################
 
-class MatchHistory(db.Model):
-    match_id = db.Column(db.Integer, primary_key=True)
-    player_1 = db.Column(db.String(80), nullable=False)
-    player_2 = db.Column(db.String(80), nullable=False)
-    score_1 = db.Column(db.Integer, nullable=False)
-    score_2 = db.Column(db.Integer, nullable=False)
-    date = db.Column(db.DateTime, nullable=False)
-    rating_p1 = db.Column(db.Integer, nullable=True)
-    rating_p2 = db.Column(db.Integer, nullable=True) 
+class MatchHistory(DB.Model):
+    match_id = DB.Column(DB.Integer, primary_key=True)
+    player_1 = DB.Column(DB.String(80), nullable=False)
+    player_2 = DB.Column(DB.String(80), nullable=False)
+    score_1 = DB.Column(DB.Integer, nullable=False)
+    score_2 = DB.Column(DB.Integer, nullable=False)
+    date = DB.Column(DB.DateTime, nullable=False)
+    rating_p1 = DB.Column(DB.Integer, nullable=True)
+    rating_p2 = DB.Column(DB.Integer, nullable=True) 
     
-class Users(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    email = db.Column(db.String(250), unique=True, nullable=False)
-    username = db.Column(db.String(250), unique=True, nullable=False)
-    password = db.Column(db.String(250), nullable=False)
+class Users(UserMixin, DB.Model):
+    id = DB.Column(DB.Integer, primary_key=True, autoincrement=True)
+    email = DB.Column(DB.String(250), unique=True, nullable=False)
+    username = DB.Column(DB.String(250), unique=True, nullable=False)
+    password = DB.Column(DB.String(250), nullable=False)
 
 # Create the database and tables within the application context
+
 with app.app_context():
-    db.create_all()
+    DB.create_all()
 
 ######################################
 ## Functions
@@ -98,13 +99,13 @@ with app.app_context():
 
 @login_manager.user_loader
 def loader_user(user_id):
-	return db.session.get(Users, user_id) 
+	return DB.session.get(Users, user_id) 
     
 def user_id_exists(user_id):
-    return bool(db.session.query(Users.query.filter_by(user_id=user_id).exists()).scalar())
+    return bool(DB.session.query(Users.query.filter_by(user_id=user_id).exists()).scalar())
 
 def email_exists(email):
-    return bool(db.session.query(Users.query.filter_by(email=email).exists()).scalar())
+    return bool(DB.session.query(Users.query.filter_by(email=email).exists()).scalar())
 
 def invullen(regelid):
     if len(request.args.keys()) == 0:
@@ -180,14 +181,14 @@ def register():
         
         try:
             # nieuwe gebruiker toevoegen
-            db.session.add(new_user)
-            db.session.commit()
+            DB.session.add(new_user)
+            DB.session.commit()
             flash("Registration successful! Please log in.")
             return redirect(url_for("login"))
         
         except Exception as e:
             # error handelen
-            db.session.rollback()
+            DB.session.rollback()
             flash("An error occurred while trying to register. Please try again.")
             print(f"Error: {e}")  # Log the error for debugging
             
@@ -235,11 +236,12 @@ def forgot_password():
         email = request.form.get("email")
         
         # Check if email exists in the database
-        conn = sqlite3.connect(settings.db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1 FROM users WHERE email = ?", (email,))
-        user_exists = cursor.fetchone() is not None
-        conn.close()
+        # conn = sqlite3.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+        # cursor = conn.cursor()
+        with DB.engine.connect() as conn:
+            result = conn.execute("SELECT 1 FROM users WHERE email = ?", (email,))
+            user_exists = len(result) > 0
+        # conn.close()
         
         if user_exists:
             # Generate token for password reset
@@ -257,7 +259,7 @@ def forgot_password():
                     Caio from the Table Tennis webapp
                     """
                     
-            send_email(settings.subject, body, settings.sender, [email], settings.password)
+            send_email(os.getenv("SUBJECT") , body, os.getenv("SENDER") , [email], os.getenv("PASSWORD"))
 
             flash("A password reset link has been sent to your email.")
             return redirect(url_for("login"))  # Redirect to login after sending email
@@ -291,7 +293,7 @@ def reset_password(token):
         hashed_password = bcrypt.generate_password_hash(new_password).decode("utf-8")
         
         # Update het wachtwoord van de gebruiker in de database
-        conn = sqlite3.connect(settings.db_path)
+        conn = sqlite3.connect(app.config["SQLALCHEMY_DATABASE_URI"])
         cursor = conn.cursor()
         cursor.execute("UPDATE users SET password = ? WHERE email = ?", (hashed_password, email))
         conn.commit()
@@ -312,10 +314,12 @@ def index():
     """
  
     # Hier wordt de tabel met ratings opgehaald
-    conn = sqlite3.connect(settings.db_path) # Verbinding maken met de database
-    match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
-    users = pd.read_sql_query("SELECT id, username FROM users", conn) # Ophalen van usernames voor de dropdown list
-    conn.close() # Verbinding sluiten
+    # conn = sqlite3.connect(app.config["SQLALCHEMY_DATABASE_URI"]) # Verbinding maken met de database
+    with DB.engine.connect() as conn:
+        
+        match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
+        users = pd.read_sql_query("SELECT id, username FROM users", conn) # Ophalen van usernames voor de dropdown list
+    # conn.close() # Verbinding sluiten
     
     users = users[["id","username"]]
 
@@ -359,9 +363,9 @@ def index():
     # maar dan wordt dat hier als bepalende factor voor de pagina layout gebruikt. (of invulvelden worden geladen met save en annuleren knoppen)
     if "edit" in request.args.keys():
         match_id = int(request.args["edit"])
-        return render_template("home.html", match_history_table=match_history_table, match_id=match_id, Player_rating=player_rating, invullen=invullen, users=users, c_user=current_user.username, email_admin=settings.email_admin)
+        return render_template("home.html", match_history_table=match_history_table, match_id=match_id, Player_rating=player_rating, invullen=invullen, users=users, c_user=current_user.username, email_admin=os.getenv("EMAIL_ADMIN"))
     
-    return render_template("home.html", match_history_table=match_history_table, Player_rating=player_rating, invullen=invullen, users=users, c_user=current_user.username, email_admin=settings.email_admin)
+    return render_template("home.html", match_history_table=match_history_table, Player_rating=player_rating, invullen=invullen, users=users, c_user=current_user.username, email_admin=os.getenv("EMAIL_ADMIN"))
 
 @app.route("/player_statistics", methods=["GET"])
 @login_required
@@ -369,10 +373,12 @@ def index_player_stats():
     """ Dit is de pagina met spelersstatistieken """
     
     # Hier wordt de tabel met ratings opgehaald
-    conn = sqlite3.connect(settings.db_path) # Verbinding maken met de database
-    match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
-    users = pd.read_sql_query("SELECT username FROM users", conn) # Ophalen van usernames voor de dropdown list
-    conn.close() # Verbinding sluiten
+    # conn = sqlite3.connect(app.config["SQLALCHEMY_DATABASE_URI"]) # Verbinding maken met de database
+    
+    with DB.engine.connect() as conn:
+        match_history = pd.read_sql_query("SELECT * FROM match_history", conn) # Ophalen van de gegevens die in de database zitten
+        users = pd.read_sql_query("SELECT username FROM users", conn) # Ophalen van usernames voor de dropdown list
+    # conn.close() # Verbinding sluiten
         
     users = users["username"].to_list()
     stats = module.player_statistics(match_history)
@@ -473,7 +479,7 @@ def add_match():
 
 
     # Verbinden met de database en ophalen van de huidige wedstrijdgeschiedenis
-    with sqlite3.connect(settings.db_path) as conn:
+    with DB.engine.connect() as conn:
         match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
 
     # Genereer een unieke `match_id`
@@ -499,7 +505,7 @@ def add_match():
     match_history = module.calculate_ratings(match_history)
 
     # Sla de bijgewerkte wedstrijdgeschiedenis op in de database
-    with sqlite3.connect(settings.db_path) as conn:
+    with DB.engine.connect() as conn:
         match_history.to_sql("match_history", conn, if_exists="replace", index=False)
 
     flash("Match added and ratings updated.")
@@ -516,10 +522,11 @@ def update_item(match_id):
     """
     # Ophalen van wedstrijd die aangepast moet worden adhv match id
     # match_to_update = MatchHistory.query.get(match_id)
-    conn = sqlite3.connect(settings.db_path)
-    match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
-    match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
-    conn.close()
+    # conn = sqlite3.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+    with DB.engine.connect() as conn:
+        match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
+        match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
+    # conn.close()
     
     # Deze serie van statements checkt of er iets in de velden ingevuld is. 
     # Zo ja, wordt die waarde gebruikt. Zo nee, pakt die de oude waarde.
@@ -567,9 +574,10 @@ def update_item(match_id):
     match_history["score_2"] = match_history["score_2"].astype(int)
 
     # Hier wordt de nieuwe versie weggeschreven naar de database
-    conn = sqlite3.connect(settings.db_path)
-    match_history.to_sql("match_history", conn, if_exists="replace", index=False)
-    conn.close()
+    # conn = sqlite3.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+    with DB.engine.connect() as conn:
+        match_history.to_sql("match_history", conn, if_exists="replace", index=False)
+    # conn.close()
     
     return redirect(url_for("index"))
 
@@ -580,10 +588,11 @@ def delete_item(match_id):
     
     # Ophalen van wedstrijd die aangepast moet worden adhv match id
     # match_to_update = MatchHistory.query.get(match_id)
-    conn = sqlite3.connect(settings.db_path)
-    match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
-    match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
-    conn.close()
+    # conn = sqlite3.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+    with DB.engine.connect() as conn:
+        match_history = pd.read_sql_query("SELECT * FROM match_history", conn)
+        match_to_update = pd.read_sql_query(f"SELECT * FROM match_history WHERE match_id = {match_id}", conn)
+    # conn.close()
     
     # Wedstrijd eruit halen
     match_history = match_history[match_history["match_id"] != match_id]
@@ -597,9 +606,10 @@ def delete_item(match_id):
     match_history = module.calculate_ratings(match_history)
 
     # Hier wordt de nieuwe versie weggeschreven naar de database
-    conn = sqlite3.connect(settings.db_path)
-    match_history.to_sql("match_history", conn, if_exists="replace", index=False)
-    conn.close()
+    # conn = sqlite3.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+    with DB.engine.connect() as conn:
+        match_history.to_sql("match_history", conn, if_exists="replace", index=False)
+    # conn.close()
 
     return redirect(url_for("index"))
 

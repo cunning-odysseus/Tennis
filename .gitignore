@@ -1,3 +1,4 @@
 leaderboard/settings.py
 leaderboard/data/data.db
 leaderboard/data/data_backup/
+leaderboard/.env
